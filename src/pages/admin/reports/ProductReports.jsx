@@ -5,13 +5,16 @@ import {
   TrendingDown, 
   AlertTriangle, 
   DollarSign,
-  BarChart3,
-  ShoppingCart,
-  Filter,
   Download,
-  RefreshCw
+  RefreshCw,
+  Search,
+  Coffee,
+  BarChart3,
+  Layers,
+  Archive
 } from 'lucide-react'
 import { useReports } from '@/hooks/useReports'
+import { MetricCard } from '@/components/Reports/MetricCards'
 
 export default function ProductReports() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -26,7 +29,6 @@ export default function ProductReports() {
   const {
     getInventoryAnalysis,
     getProductAnalysis,
-    getTopProducts,
     exportToCSV,
     formatCurrency,
     loading
@@ -63,446 +65,414 @@ export default function ProductReports() {
     exportToCSV(data, filename, headers)
   }
 
-  const MetricCard = ({ title, value, change, icon: Icon, color = 'blue' }) => (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className={`text-2xl font-bold text-gray-900`}>
-            {typeof value === 'number' && value > 1000 ? formatCurrency(value) : value}
-          </p>
-          {change !== undefined && (
-            <div className="flex items-center mt-1">
-              {change >= 0 ? (
-                <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-              )}
-              <span className={`text-sm ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {Math.abs(change)}%
-              </span>
-            </div>
-          )}
-        </div>
-        <div className={`p-3 bg-${color}-100 rounded-lg`}>
-          <Icon className={`w-6 h-6 text-${color}-600`} />
-        </div>
-      </div>
-    </div>
-  )
-
   if (!reportData) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="w-12 h-12 animate-spin text-primary" />
+          <p className="text-slate-500 font-bold"> Cargando Análisis...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-8 max-w-[1600px] mx-auto bg-slate-50 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <header className="mb-10 flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reportes de Productos</h1>
-          <p className="text-gray-600">Análisis detallado del rendimiento de productos y inventario</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Reportes de Productos</h1>
+          <p className="text-slate-500 mt-2 font-medium">Análisis detallado del rendimiento de productos e inventario</p>
         </div>
-        <button
-          onClick={() => loadProductData()}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </button>
-      </div>
+        
+        <div className="flex gap-4">
+          <button
+            onClick={() => loadProductData()}
+            className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 transition-all shadow-sm font-bold text-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+          
+          <div className="bg-white p-1 rounded-2xl border border-slate-200 shadow-sm flex">
+            <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<BarChart3 size={18}/>} label="Resumen" />
+            <TabButton active={activeTab === 'performance'} onClick={() => setActiveTab('performance')} icon={<TrendingUp size={18}/>} label="Rendimiento" />
+            <TabButton active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Archive size={18}/>} label="Inventario" />
+            <TabButton active={activeTab === 'analysis'} onClick={() => setActiveTab('analysis')} icon={<Layers size={18}/>} label="Análisis" />
+          </div>
+        </div>
+      </header>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
         <MetricCard
           title="Total Productos"
           value={reportData.products.length}
-          icon={Package}
-          color="purple"
+          change={null}
+          icon={<Package />}
+          colorClass="text-purple-600"
         />
         <MetricCard
           title="Valor del Inventario"
-          value={reportData.inventory.totalInventoryValue}
-          icon={DollarSign}
-          color="green"
+          value={formatCurrency(reportData.inventory.totalInventoryValue)}
+          change={null}
+          icon={<DollarSign />}
+          colorClass="text-emerald-600"
         />
         <MetricCard
-          title="Productos con Bajo Stock"
+          title="Productos Stock Bajo"
           value={reportData.lowStock.length}
-          icon={AlertTriangle}
-          color="red"
+          change={null}
+          icon={<AlertTriangle />}
+          colorClass="text-red-500"
         />
         <MetricCard
-          title="Productos de Movimiento Rápido"
+          title="Movimiento Rápido"
           value={reportData.fastMoving.length}
-          icon={TrendingUp}
-          color="blue"
+          change={null}
+          icon={<TrendingUp />}
+          colorClass="text-blue-600"
         />
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="border-b border-gray-200">
-          <div className="flex space-x-8 p-4">
-            {[
-              { id: 'overview', label: 'Resumen' },
-              { id: 'performance', label: 'Rendimiento' },
-              { id: 'inventory', label: 'Inventario' },
-              { id: 'analysis', label: 'Análisis' }
-            ].map(tab => (
+      {activeTab === 'overview' && (
+        <div className="space-y-10">
+          {/* Top Products */}
+          <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-xl">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Coffee className="text-primary" />
+                Productos Más Vendidos
+              </h3>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                onClick={() => handleExport(reportData.topByRevenue, 'top_products.csv')}
+                className="flex items-center text-sm font-bold text-primary hover:text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl"
               >
-                {tab.label}
+                <Download className="w-4 h-4 mr-2" />
+                Exportar CSV
               </button>
-            ))}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Producto</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoría</th>
+                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendidos</th>
+                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Ingresos</th>
+                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Margen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {reportData.topByRevenue.slice(0, 5).map((product, index) => (
+                    <tr key={index} className="hover:bg-slate-50/50 transition-all group">
+                      <td className="px-6 py-4">
+                        <div className="font-black text-slate-900">{product.name}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-500">
+                        {product.category || 'Sin categoría'}
+                      </td>
+                      <td className="px-6 py-4 text-center font-bold text-slate-700">
+                        {product.quantity || 0}
+                      </td>
+                      <td className="px-6 py-4 text-right font-black text-slate-900">
+                        {formatCurrency(product.revenue || 0)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex px-3 py-1 text-xs font-black rounded-full ${
+                          (product.profitability || 0) > 30
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : (product.profitability || 0) > 15
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {(product.profitability || 0).toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Low Stock Alert */}
+          {reportData.lowStock.length > 0 && (
+            <div className="bg-rose-50 border-l-4 border-rose-500 rounded-2xl p-6 flex items-start justify-between shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="bg-rose-100 p-3 rounded-xl text-rose-600">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-black text-rose-800">Alerta de Stock Bajo</h4>
+                  <p className="text-rose-700 font-medium">
+                    {reportData.lowStock.length} productos necesitan reabastecimiento urgente.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className="px-6 py-3 bg-white text-rose-600 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm border border-rose-100"
+              >
+                Ver inventario
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Performance Tab */}
+      {activeTab === 'performance' && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Top by Revenue */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-lg">
+              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                 <DollarSign className="text-primary" />
+                 Top 10 por Ingresos
+              </h3>
+              <div className="space-y-4">
+                {reportData.topByRevenue.slice(0, 10).map((product, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center">
+                      <span className="text-lg font-black text-slate-300 w-10">#{index + 1}</span>
+                      <div>
+                        <p className="font-bold text-slate-900">{product.name}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{product.quantity || 0} unidades</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-slate-900">{formatCurrency(product.revenue || 0)}</p>
+                      <p className="text-xs font-bold text-emerald-600">{(product.profitability || 0).toFixed(1)}% margen</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top by Quantity */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-lg">
+              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                 <Package className="text-blue-600" />
+                 Top 10 por Unidades
+              </h3>
+              <div className="space-y-4">
+                {reportData.topByQuantity.slice(0, 10).map((product, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center">
+                      <span className="text-lg font-black text-slate-300 w-10">#{index + 1}</span>
+                      <div>
+                        <p className="font-bold text-slate-900">{product.name}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{formatCurrency(product.revenue || 0)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-slate-900">{product.quantity || 0} unds</p>
+                      <p className="text-xs font-bold text-slate-400">{formatCurrency(product.avgPrice || 0)} c/u</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="p-6">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Top Products */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Productos Más Vendidos</h3>
-                  <button
-                    onClick={() => handleExport(reportData.topByRevenue, 'top_products.csv')}
-                    className="flex items-center text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    <Download className="w-4 h-4 mr-1" />
-                    Exportar
-                  </button>
+      {/* Inventory Tab */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-rose-50 border border-rose-100 rounded-[2rem] p-6 shadow-sm">
+              <div className="flex items-center">
+                <div className="bg-rose-100 p-3 rounded-2xl text-rose-600 mr-4">
+                  <AlertTriangle className="w-6 h-6" />
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Producto
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Categoría
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Unidades Vendidas
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ingresos
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Margen
-                        </th>
+                <div>
+                  <p className="font-black text-rose-800 uppercase text-xs tracking-widest">Stock Crítico</p>
+                  <p className="text-3xl font-black text-rose-900 mt-1">{reportData.lowStock.length}</p>
+                  <p className="text-xs font-bold text-rose-700 mt-1">necesitan reabastecimiento</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-[2rem] p-6 shadow-sm">
+              <div className="flex items-center">
+                <div className="bg-emerald-100 p-3 rounded-2xl text-emerald-600 mr-4">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-black text-emerald-800 uppercase text-xs tracking-widest">Movimiento Rápido</p>
+                  <p className="text-3xl font-black text-emerald-900 mt-1">{reportData.fastMoving.length}</p>
+                  <p className="text-xs font-bold text-emerald-700 mt-1">alta rotación</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 shadow-sm">
+              <div className="flex items-center">
+                <div className="bg-amber-100 p-3 rounded-2xl text-amber-600 mr-4">
+                  <TrendingDown className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-black text-amber-800 uppercase text-xs tracking-widest">Movimiento Lento</p>
+                  <p className="text-3xl font-black text-amber-900 mt-1">{reportData.slowMoving.length}</p>
+                  <p className="text-xs font-bold text-amber-700 mt-1">baja rotación</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {reportData.lowStock.length > 0 && (
+            <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-xl">
+              <h3 className="text-xl font-bold text-rose-600 mb-8 flex items-center gap-2">
+                <AlertTriangle />
+                Productos con Stock Bajo
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-rose-100 bg-rose-50/50">
+                      <th className="px-6 py-4 text-left text-[10px] font-black text-rose-800 uppercase tracking-widest rounded-tl-2xl">Producto</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-rose-800 uppercase tracking-widest">Stock Actual</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-rose-800 uppercase tracking-widest">Stock Mínimo</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-rose-800 uppercase tracking-widest">Días de Inv.</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-black text-rose-800 uppercase tracking-widest rounded-tr-2xl">Valor Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-rose-50">
+                    {reportData.lowStock.map((product, index) => (
+                      <tr key={index} className="hover:bg-rose-50 transition-all">
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                          {product.name}
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm font-black text-rose-600">
+                          {product.stock}
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm font-medium text-slate-500">
+                          {product.min_stock}
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm font-bold text-slate-700">
+                          {product.daysOfInventory?.toFixed(1) || 0}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm font-black text-slate-900">
+                          {formatCurrency(product.totalValue || 0)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {reportData.topByRevenue.slice(0, 5).map((product, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {product.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {product.category || 'Sin categoría'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {product.quantity || 0}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatCurrency(product.revenue || 0)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              (product.profitability || 0) > 30
-                                ? 'bg-green-100 text-green-800'
-                                : (product.profitability || 0) > 15
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {(product.profitability || 0).toFixed(1)}%
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Low Stock Alert */}
-              {reportData.lowStock.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-semibold text-red-800">Alerta de Stock Bajo</h4>
-                      <p className="text-sm text-red-700 mt-1">
-                        {reportData.lowStock.length} productos necesitan reabastecimiento urgente
-                      </p>
-                      <div className="mt-3">
-                        <button
-                          onClick={() => setActiveTab('inventory')}
-                          className="text-sm font-medium text-red-800 hover:text-red-900"
-                        >
-                          Ver productos →
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Performance Tab */}
-          {activeTab === 'performance' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Top by Revenue */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 por Ingresos</h3>
-                  <div className="space-y-3">
-                    {reportData.topByRevenue.slice(0, 10).map((product, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center">
-                          <span className="text-lg font-bold text-gray-400 w-8">#{index + 1}</span>
-                          <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
-                            <p className="text-sm text-gray-500">{product.quantity || 0} unidades</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">{formatCurrency(product.revenue || 0)}</p>
-                          <p className="text-sm text-gray-500">{(product.profitability || 0).toFixed(1)}% margen</p>
-                        </div>
-                      </div>
                     ))}
-                  </div>
-                </div>
-
-                {/* Top by Quantity */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 por Unidades</h3>
-                  <div className="space-y-3">
-                    {reportData.topByQuantity.slice(0, 10).map((product, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center">
-                          <span className="text-lg font-bold text-gray-400 w-8">#{index + 1}</span>
-                          <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
-                            <p className="text-sm text-gray-500">{formatCurrency(product.revenue || 0)}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">{product.quantity || 0} unds</p>
-                          <p className="text-sm text-gray-500">{formatCurrency(product.avgPrice || 0)} c/u</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Inventory Tab */}
-          {activeTab === 'inventory' && (
-            <div className="space-y-6">
-              {/* Inventory Status */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
-                    <div>
-                      <p className="font-semibold text-red-800">Stock Crítico</p>
-                      <p className="text-2xl font-bold text-red-900">{reportData.lowStock.length}</p>
-                      <p className="text-sm text-red-700">productos necesitan reabastecimiento</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
-                    <div>
-                      <p className="font-semibold text-green-800">Movimiento Rápido</p>
-                      <p className="text-2xl font-bold text-green-900">{reportData.fastMoving.length}</p>
-                      <p className="text-sm text-green-700">productos con alta rotación</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <TrendingDown className="w-5 h-5 text-yellow-600 mr-2" />
-                    <div>
-                      <p className="font-semibold text-yellow-800">Movimiento Lento</p>
-                      <p className="text-2xl font-bold text-yellow-900">{reportData.slowMoving.length}</p>
-                      <p className="text-sm text-yellow-700">productos con baja rotación</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Low Stock Products */}
-              {reportData.lowStock.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-red-800 mb-4">Productos con Stock Bajo</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-red-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
-                            Producto
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
-                            Stock Actual
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
-                            Stock Mínimo
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
-                            Días de Inventario
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
-                            Valor Total
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {reportData.lowStock.map((product, index) => (
-                          <tr key={index} className="hover:bg-red-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {product.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                              {product.stock}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {product.min_stock}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {product.daysOfInventory?.toFixed(1) || 0}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatCurrency(product.totalValue || 0)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Analysis Tab */}
-          {activeTab === 'analysis' && (
-            <div className="space-y-6">
-              {/* Category Performance */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Análisis por Categoría</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {Object.entries(
-                    reportData.products.reduce((acc, product) => {
-                      const category = product.category || 'Sin categoría'
-                      if (!acc[category]) {
-                        acc[category] = {
-                          name: category,
-                          products: [],
-                          totalRevenue: 0,
-                          totalQuantity: 0,
-                          avgMargin: 0
-                        }
-                      }
-                      acc[category].products.push(product)
-                      acc[category].totalRevenue += product.revenue || 0
-                      acc[category].totalQuantity += product.quantity || 0
-                      acc[category].avgMargin += product.profitability || 0
-                      return acc
-                    }, {})
-                  ).map(([categoryName, data], index) => {
-                    const avgMargin = data.products.length > 0 ? data.avgMargin / data.products.length : 0
-                    return (
-                      <div key={index} className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <h4 className="font-medium text-gray-900">{categoryName}</h4>
-                          <span className="text-sm text-gray-500">{data.products.length} productos</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-gray-600">Ingresos</p>
-                            <p className="font-semibold text-gray-900">{formatCurrency(data.totalRevenue)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600">Unidades</p>
-                            <p className="font-semibold text-gray-900">{data.totalQuantity}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600">Margen Promedio</p>
-                            <p className={`font-semibold ${
-                              avgMargin > 30 ? 'text-green-600' : avgMargin > 15 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
-                              {avgMargin.toFixed(1)}%
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600">Ingreso x Producto</p>
-                            <p className="font-semibold text-gray-900">
-                              {data.products.length > 0 ? formatCurrency(data.totalRevenue / data.products.length) : '$0'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Profitability Analysis */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Análisis de Rentabilidad</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h4 className="font-medium text-green-800 mb-2">Alta Rentabilidad (&gt;30%)</h4>
-                    <p className="text-2xl font-bold text-green-900">
-                      {reportData.products.filter(p => (p.profitability || 0) > 30).length}
-                    </p>
-                    <p className="text-sm text-green-700">productos</p>
-                  </div>
-
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h4 className="font-medium text-yellow-800 mb-2">Rentabilidad Media (15-30%)</h4>
-                    <p className="text-2xl font-bold text-yellow-900">
-                      {reportData.products.filter(p => (p.profitability || 0) >= 15 && (p.profitability || 0) <= 30).length}
-                    </p>
-                    <p className="text-sm text-yellow-700">productos</p>
-                  </div>
-
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h4 className="font-medium text-red-800 mb-2">Baja Rentabilidad (&lt;15%)</h4>
-                    <p className="text-2xl font-bold text-red-900">
-                      {reportData.products.filter(p => (p.profitability || 0) < 15).length}
-                    </p>
-                    <p className="text-sm text-red-700">productos</p>
-                  </div>
-                </div>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Analysis Tab */}
+      {activeTab === 'analysis' && (
+        <div className="space-y-10">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 mb-6">Análisis por Categoría</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {Object.entries(
+                reportData.products.reduce((acc, product) => {
+                  const category = product.category || 'Sin categoría'
+                  if (!acc[category]) {
+                    acc[category] = {
+                      name: category,
+                      products: [],
+                      totalRevenue: 0,
+                      totalQuantity: 0,
+                      avgMargin: 0
+                    }
+                  }
+                  acc[category].products.push(product)
+                  acc[category].totalRevenue += product.revenue || 0
+                  acc[category].totalQuantity += product.quantity || 0
+                  acc[category].avgMargin += product.profitability || 0
+                  return acc
+                }, {})
+              ).map(([categoryName, data], index) => {
+                const avgMargin = data.products.length > 0 ? data.avgMargin / data.products.length : 0
+                return (
+                  <div key={index} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm">
+                    <div className="flex justify-between items-start mb-6">
+                      <h4 className="text-lg font-black text-slate-900">{categoryName}</h4>
+                      <span className="text-xs font-bold bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase tracking-wider">{data.products.length} productos</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 text-sm">
+                      <div className='bg-slate-50 p-4 rounded-2xl'>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ingresos</p>
+                        <p className="text-xl font-black text-slate-900 mt-1">{formatCurrency(data.totalRevenue)}</p>
+                      </div>
+                      <div className='bg-slate-50 p-4 rounded-2xl'>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unidades</p>
+                        <p className="text-xl font-black text-slate-900 mt-1">{data.totalQuantity}</p>
+                      </div>
+                      <div className='bg-slate-50 p-4 rounded-2xl'>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Margen Prom.</p>
+                        <p className={`text-xl font-black mt-1 ${
+                          avgMargin > 30 ? 'text-emerald-600' : avgMargin > 15 ? 'text-amber-600' : 'text-rose-600'
+                        }`}>
+                          {avgMargin.toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className='bg-slate-50 p-4 rounded-2xl'>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ingreso Prom.</p>
+                        <p className="text-xl font-black text-slate-900 mt-1">
+                          {data.products.length > 0 ? formatCurrency(data.totalRevenue / data.products.length) : '$0'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 mb-6">Análisis de Rentabilidad</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-[2rem] p-8">
+                <h4 className="font-black text-emerald-800 mb-2 uppercase text-xs tracking-widest">Alta Rentabilidad (&gt;30%)</h4>
+                <p className="text-4xl font-black text-emerald-900">
+                  {reportData.products.filter(p => (p.profitability || 0) > 30).length}
+                </p>
+                <p className="text-xs font-bold text-emerald-700 mt-1">productos estrella</p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-[2rem] p-8">
+                <h4 className="font-black text-amber-800 mb-2 uppercase text-xs tracking-widest">Rentabilidad Media (15-30%)</h4>
+                <p className="text-4xl font-black text-amber-900">
+                  {reportData.products.filter(p => (p.profitability || 0) >= 15 && (p.profitability || 0) <= 30).length}
+                </p>
+                <p className="text-xs font-bold text-amber-700 mt-1">prod. regulares</p>
+              </div>
+
+              <div className="bg-rose-50 border border-rose-200 rounded-[2rem] p-8">
+                <h4 className="font-black text-rose-800 mb-2 uppercase text-xs tracking-widest">Baja Rentabilidad (&lt;15%)</h4>
+                <p className="text-4xl font-black text-rose-900">
+                  {reportData.products.filter(p => (p.profitability || 0) < 15).length}
+                </p>
+                <p className="text-xs font-bold text-rose-700 mt-1">revisar costos</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+function TabButton({ active, onClick, icon, label }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+        active ? 'bg-slate-900 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:text-slate-600'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }

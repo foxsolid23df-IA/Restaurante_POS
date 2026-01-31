@@ -1,22 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Edit2, Trash2, Printer, Settings } from 'lucide-react'
+import { Plus, Edit2, Trash2, Printer, Settings, Layers, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import AreaConfig from '@/components/Admin/AreaConfig'
-import { usePrinters } from '@/hooks/usePrinters'
+import CategoryModal from '@/components/Catalog/CategoryModal' // New modal import
 
 export default function Categories() {
   const [categories, setCategories] = useState([])
-  const [printersList, setPrintersList] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showAreaConfig, setShowAreaConfig] = useState(false)
-  const { getPrinters } = usePrinters()
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    printer_id: ''
-  })
 
   useEffect(() => {
     loadData()
@@ -25,88 +19,56 @@ export default function Categories() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [catsRes, printersRes] = await Promise.all([
-        supabase.from('categories').select('*, printers(name)').order('name'),
-        getPrinters()
-      ])
-
-      setCategories(catsRes.data || [])
-      setPrintersList(printersRes || [])
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*, printers(name)')
+        .order('name')
+      
+      if (error) throw error
+      setCategories(data || [])
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('Error loading categories:', error)
+      toast.error('Error al cargar categorías')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    if (!formData.name.trim()) {
-      alert('El nombre de la categoría es requerido')
-      return
-    }
-
+  const handleDelete = async (category) => {
+    if (!confirm(`¿Estás seguro de eliminar "${category.name}"?`)) return
     try {
-      const dataToSubmit = {
-        name: formData.name.trim(),
-        printer_id: formData.printer_id || null
-      }
-
-      if (editingCategory) {
-        const { error } = await supabase
-          .from('categories')
-          .update(dataToSubmit)
-          .eq('id', editingCategory.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('categories')
-          .insert([dataToSubmit])
-        if (error) throw error
-      }
-
-      loadData()
-      setShowModal(false)
-      setEditingCategory(null)
-      setFormData({ name: '', printer_id: '' })
-    } catch (error) {
-      console.error('Error saving category:', error)
-      alert(`Error al guardar: ${error.message}`)
-    }
-  }
-
-  const handleDelete = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar esta categoría?')) return
-    try {
-      const { error } = await supabase.from('categories').delete().eq('id', id)
+      const { error } = await supabase.from('categories').delete().eq('id', category.id)
       if (error) throw error
+      toast.success('Categoría eliminada')
       loadData()
     } catch (error) {
-      alert('Error al eliminar')
+      toast.error('Error al eliminar')
     }
   }
 
-  const openEditModal = (category) => {
-    setEditingCategory(category)
-    setFormData({
-      name: category.name || '',
-      printer_id: category.printer_id || ''
-    })
-    setShowModal(true)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          <p className="text-slate-500 font-bold">Cargando Categorías...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-8 max-w-[1600px] mx-auto bg-slate-50 min-h-screen">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Categorías</h1>
-          <p className="text-slate-600 mt-2">Organiza tu menú por categorías y asigna impresoras</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Categorías</h1>
+          <p className="text-slate-500 mt-2 font-medium">Organiza tu menú y asigna impresoras por zona</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <button
             onClick={() => setShowAreaConfig(true)}
-            className="flex items-center gap-2 bg-slate-100 text-slate-700 px-6 py-3 rounded-lg hover:bg-slate-200 transition-colors font-bold"
+            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-6 py-4 rounded-2xl hover:bg-slate-50 transition-all font-bold shadow-sm"
           >
             <Settings size={20} />
             Configurar Áreas
@@ -114,49 +76,75 @@ export default function Categories() {
           <button
             onClick={() => {
               setEditingCategory(null)
-              setFormData({ name: '', printer_id: '' })
               setShowModal(true)
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg font-bold"
+            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-4 rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-200 font-bold"
           >
             <Plus size={20} />
-            Agregar Categoría
+            Nueva Categoría
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      {categories.length === 0 ? (
+        <div className="bg-white rounded-[3rem] shadow-xl p-20 text-center border border-slate-100 max-w-2xl mx-auto mt-20">
+           <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+             <Layers className="text-slate-300" size={64} />
+           </div>
+           <h3 className="text-3xl font-black text-slate-900 mb-4">Sin Categorías</h3>
+           <p className="text-slate-500 mb-10 font-medium text-lg leading-relaxed">
+             Crea categorías para organizar tus productos (ej: Entradas, Bebidas, Postres).
+           </p>
+           <button
+             onClick={() => setShowModal(true)}
+             className="bg-primary text-white px-10 py-5 rounded-2xl hover:bg-emerald-700 transition-all font-black text-lg shadow-xl shadow-emerald-200"
+           >
+             Crear Primera Categoría
+           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {categories.map((category) => (
-            <div key={category.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all border border-slate-100">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                   <h3 className="text-xl font-bold text-slate-900">{category.name}</h3>
-                   {category.printers && (
-                     <div className="flex items-center gap-2 text-xs text-blue-600 font-bold mt-1 uppercase tracking-wider">
-                       <Printer size={12} />
-                       <span>Impresora: {category.printers.name}</span>
-                     </div>
-                   )}
+            <div key={category.id} className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:scale-[1.02] transition-all group duration-300 flex flex-col justify-between min-h-[200px]">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                   <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-primary border border-emerald-100">
+                      <Layers size={24} />
+                   </div>
+                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          setEditingCategory(category)
+                          setShowModal(true)
+                        }}
+                        className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-colors"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(category)}
+                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-xl transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditModal(category)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(category.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                
+                <h3 className="text-2xl font-black text-slate-900 mb-2 truncate" title={category.name}>
+                  {category.name}
+                </h3>
+                
+                {category.printers ? (
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg w-fit">
+                    <Printer size={12} />
+                    <span className="truncate max-w-[150px]">{category.printers.name}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg w-fit">
+                    <Printer size={12} />
+                    <span>Sin impresión</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -165,90 +153,41 @@ export default function Categories() {
 
       {/* Modal para configurar áreas */}
       {showAreaConfig && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-start">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="bg-white border-b border-slate-100 px-8 py-6 flex justify-between items-start shrink-0">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Configuración de Áreas</h2>
-                <p className="text-slate-600 mt-1">Define las áreas físicas del restaurante</p>
+                <h2 className="text-2xl font-black text-slate-900">Configuración de Áreas</h2>
+                <p className="text-slate-500 font-medium text-sm mt-1">Define las áreas físicas del restaurante</p>
               </div>
               <button
                 onClick={() => setShowAreaConfig(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-3 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <Plus className="rotate-45" size={24} />
               </button>
             </div>
-            <AreaConfig />
+            <div className="overflow-y-auto p-8 flex-1">
+              <AreaConfig />
+            </div>
           </div>
         </div>
       )}
 
       {/* Modal Categoría */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
-            <div className="bg-slate-900 px-6 py-4 text-white">
-              <h2 className="text-xl font-bold uppercase tracking-tight">
-                {editingCategory ? 'Editar Categoría' : 'Nueva Categoría'}
-              </h2>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
-                  Nombre de Categoría
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
-                  placeholder="Ej: Plato Principal"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
-                  Enrutar a Impresora
-                </label>
-                <select
-                  value={formData.printer_id || ''}
-                  onChange={(e) => setFormData({ ...formData, printer_id: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold appearance-none"
-                >
-                  <option value="">No imprimir comandas</option>
-                  {printersList.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.ip_address})</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-400 mt-2 px-1 italic">
-                  * Las comandas de esta categoría se enviarán automáticamente a la impresora seleccionada.
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false)
-                    setEditingCategory(null)
-                  }}
-                  className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors font-bold uppercase text-xs tracking-widest"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-bold uppercase text-xs tracking-widest shadow-lg shadow-blue-100"
-                >
-                  {editingCategory ? 'Actualizar' : 'Crear'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CategoryModal
+          category={editingCategory}
+          onClose={() => {
+            setShowModal(false)
+            setEditingCategory(null)
+          }}
+          onSave={() => {
+            loadData()
+            setShowModal(false)
+            setEditingCategory(null)
+          }}
+        />
       )}
     </div>
   )

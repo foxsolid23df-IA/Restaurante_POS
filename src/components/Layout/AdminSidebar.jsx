@@ -23,6 +23,7 @@ const adminMenuItems = [
   { icon: UtensilsCrossed, label: 'Menú y Catálogos', path: '/admin/catalog' },
   { icon: Users, label: 'Personal y Roles', path: '/admin/staff' },
   { icon: Package, label: 'Inventarios', path: '/admin/inventory' },
+  { icon: Award, label: 'CRM y Lealtad', path: '/admin/crm' },
   { icon: ShoppingCart, label: 'Compras/Almacén', path: '/admin/purchases' },
   { icon: MapPin, label: 'Sucursales', path: '/admin/branches' },
   { icon: LayoutGrid, label: 'Arquitectura de Salón', path: '/admin/salon' },
