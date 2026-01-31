@@ -1,0 +1,205 @@
+# Production Monitoring and Logging Setup
+# Restaurant POS System
+
+version: '3.8'
+
+services:
+  # Application Service
+  app:
+    image: restaurant-pos:production
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - SENTRY_DSN=${SENTRY_DSN}
+      - METRICS_ENABLED=true
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - prometheus
+      - grafana
+      - elasticsearch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pos.rule=Host(`your-restaurant.com`)"
+      - "traefik.http.routers.pos.tls.certresolver=letsencrypt"
+
+  # Reverse Proxy and Load Balancer
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@your-restaurant.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./acme.json:/acme.json
+    restart: unless-stopped
+
+  # Metrics Collection - Prometheus
+  prometheus:
+    image: prom/prometheus:v2.40.0
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+
+  # Monitoring Dashboard - Grafana
+  grafana:
+    image: grafana/grafana:9.3.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+
+  # Log Aggregation - Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+
+  # Log Visualization - Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.6.0
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+
+  # Log Collection - Filebeat
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.6.0
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./logs:/app/logs:ro
+      - ./monitoring/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+
+  # Error Tracking - Sentry (Self-hosted)
+  sentry:
+    image: getsentry/sentry:23.6.1
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - SENTRY_SECRET_KEY=${SENTRY_SECRET_KEY}
+      - SENTRY_URL_PREFIX=http://localhost:9000
+    volumes:
+      - sentry-data:/data
+    command:
+      - "web"
+      - "--workers=3"
+      - "--max-uports=1000"
+
+  # Database Monitoring
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.12.0
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:password@database:5432/restaurant_pos
+    ports:
+      - "9187:9187"
+    depends_on:
+      - database
+
+  # Node.js Application Monitoring
+  node-exporter:
+    image: prom/node-exporter:v1.5.0
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  # Alerting - AlertManager
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+
+  # Health Check and Uptime
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.20.0
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    environment:
+      - UPTIME_KUMA_HOST=0.0.0.0
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  elasticsearch-data:
+  sentry-data:
+  alertmanager-data:
+  uptime-kuma-data:
+
+networks:
+  default:
+    name: restaurant-pos-network

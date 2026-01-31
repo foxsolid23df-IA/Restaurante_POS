@@ -1,0 +1,25 @@
+
+> restaurante-pos@1.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 52 modules transformed.
+Γ£ù Build failed in 1.38s
+error during build:
+src/hooks/useOrders.js (6:7): Expected '{', got 'interface'
+file: C:/Users/foxso/OneDrive - Universidad Abierta y a Distancia de M├⌐xico/Im├ígenes/Restaurante POS/src/hooks/useOrders.js:6:7
+
+4: 
+5: // Types
+6: export interface Order {
+          ^
+7:   id: string
+8:   cart_id?: string
+
+    at getRollupError (file:///C:/Users/foxso/OneDrive%20-%20Universidad%20Abierta%20y%20a%20Distancia%20de%20M%C3%A9xico/Im%C3%A1genes/Restaurante%20POS/node_modules/rollup/dist/es/shared/parseAst.js:400:41)
+    at ParseError.initialise (file:///C:/Users/foxso/OneDrive%20-%20Universidad%20Abierta%20y%20a%20Distancia%20de%20M%C3%A9xico/Im%C3%A1genes/Restaurante%20POS/node_modules/rollup/dist/es/shared/node-entry.js:14461:28)
+    at convertNode (file:///C:/Users/foxso/OneDrive%20-%20Universidad%20Abierta%20y%20a%20Distancia%20de%20M%C3%A9xico/Im%C3%A1genes/Restaurante%20POS/node_modules/rollup/dist/es/shared/node-entry.js:16433:10)
+    at convertProgram (file:///C:/Users/foxso/OneDrive%20-%20Universidad%20Abierta%20y%20a%20Distancia%20de%20M%C3%A9xico/Im%C3%A1genes/Restaurante%20POS/node_modules/rollup/dist/es/shared/node-entry.js:15673:12)
+    at Module.setSource (file:///C:/Users/foxso/OneDrive%20-%20Universidad%20Abierta%20y%20a%20Distancia%20de%20M%C3%A9xico/Im%C3%A1genes/Restaurante%20POS/node_modules/rollup/dist/es/shared/node-entry.js:17388:24)
+    at async ModuleLoader.addModuleSource (file:///C:/Users/foxso/OneDrive%20-%20Universidad%20Abierta%20y%20a%20Distancia%20de%20M%C3%A9xico/Im%C3%A1genes/Restaurante%20POS/node_modules/rollup/dist/es/shared/node-entry.js:21453:13)

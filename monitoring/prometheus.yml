@@ -1,0 +1,249 @@
+# Prometheus Configuration for Restaurant POS Monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'restaurant-pos-monitor'
+    environment: 'production'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Application Metrics
+  - job_name: 'restaurant-pos-app'
+    static_configs:
+      - targets: ['app:80']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    scrape_timeout: 5s
+
+  # Node Exporter Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # PostgreSQL Exporter Metrics
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Nginx Metrics (if available)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    scrape_interval: 30s
+
+  # Custom Business Metrics
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets: ['app:80']
+    metrics_path: '/api/metrics/business'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Database Performance Metrics
+  - job_name: 'database-performance'
+    static_configs:
+      - targets: ['app:80']
+    metrics_path: '/api/metrics/database'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # External Health Checks
+  - job_name: 'external-health-checks'
+    static_configs:
+      - targets: 
+        - 'https://your-restaurant.com'
+        - 'https://staging.your-restaurant.com'
+    metrics_path: '/health'
+    scheme: https
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+# Recording Rules for Performance Optimization
+recording_rules:
+  - name: restaurant-pos-aggregations
+    interval: 30s
+    rules:
+      # Calculate average response time
+      - record: 'avg_response_time_5m'
+        expr: 'rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])'
+      
+      # Calculate 95th percentile response time
+      - record: 'response_time_p95_5m'
+        expr: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))'
+      
+      # Calculate error rate
+      - record: 'error_rate_5m'
+        expr: 'rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])'
+      
+      # Calculate request rate
+      - record: 'request_rate_5m'
+        expr: 'rate(http_requests_total[5m])'
+      
+      # Database connections
+      - record: 'database_connections'
+        expr: 'pg_stat_database_numbackends'
+      
+      # Database query performance
+      - record: 'avg_query_time_5m'
+        expr: 'rate(pg_stat_statements_mean_time_seconds[5m])'
+      
+      # Active users
+      - record: 'active_users_5m'
+        expr: 'count(increase(user_logins_total[5m]))'
+      
+      # Orders per minute
+      - record: 'orders_per_minute'
+        expr: 'rate(orders_created_total[1m])'
+      
+      # Revenue per hour
+      - record: 'revenue_per_hour'
+        expr: 'rate(order_revenue_total[1h])'
+
+# Alerting Rules
+alerting_rules:
+  - name: restaurant-pos-alerts
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: error_rate_5m > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: restaurant-pos
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://wiki.company.com/runbooks/high-error-rate"
+
+      # High Response Time Alert
+      - alert: HighResponseTime
+        expr: response_time_p95_5m > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: restaurant-pos
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s for the last 5 minutes"
+
+      # Database Connection Alert
+      - alert: DatabaseConnectionHigh
+        expr: database_connections > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "High database connection count"
+          description: "Database has {{ $value }} connections"
+
+      # Database Down Alert
+      - alert: DatabaseDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database is down"
+          description: "Database has been down for more than 1 minute"
+
+      # Application Down Alert
+      - alert: ApplicationDown
+        expr: up{job="restaurant-pos-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: restaurant-pos
+        annotations:
+          summary: "Application is down"
+          description: "Restaurant POS application has been down for more than 1 minute"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% for the last 10 minutes"
+
+      # Disk Space Alert
+      - alert: LowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value | humanizePercentage }}"
+
+      # SSL Certificate Expiry Alert
+      - alert: SSLCertificateExpiring
+        expr: probe_ssl_earliest_cert_expiry - time() < 7 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+          service: ssl
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate will expire in {{ $value | humanizeDuration }}"
+
+      # No Orders Alert (Business Hours)
+      - alert: NoOrdersInBusinessHours
+        expr: increase(orders_created_total[1h]) == 0
+        for: 2h
+        labels:
+          severity: warning
+          service: business
+        annotations:
+          summary: "No orders in the last 2 hours"
+          description: "No orders have been created in the last 2 hours during business hours"
+
+      # Payment Processing Failure
+      - alert: PaymentProcessingFailure
+        expr: rate(payment_failures_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: payments
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment failure rate is {{ $value | humanizePercentage }} in the last 5 minutes"
+
+# Remote Write Configuration (for long-term storage)
+remote_write:
+  - url: "https://longterm-storage.example.com/api/v1/write"
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/remote-storage-password

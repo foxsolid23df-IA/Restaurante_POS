@@ -1,0 +1,40 @@
+
+> restaurante-pos@1.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 25 modules transformed.
+Γ£ù Build failed in 1.33s
+error during build:
+[vite:esbuild] Transform failed with 2 errors:
+C:/Users/foxso/OneDrive - Universidad Abierta y a Distancia de M├⌐xico/Im├ígenes/Restaurante POS/src/pages/CRM.jsx:152:28: ERROR: Unexpected closing "td" tag does not match opening "div" tag
+C:/Users/foxso/OneDrive - Universidad Abierta y a Distancia de M├⌐xico/Im├ígenes/Restaurante POS/src/pages/CRM.jsx:200:22: ERROR: Expected ")" but found "}"
+file: C:/Users/foxso/OneDrive - Universidad Abierta y a Distancia de M├⌐xico/Im├ígenes/Restaurante POS/src/pages/CRM.jsx:152:28
+
+Unexpected closing "td" tag does not match opening "div" tag
+150 |                                <div className="text-sm text-gray-500">{customer.email}</div>
+151 |                              </div>
+152 |                            </td>
+    |                              ^
+153 |                          </td>
+154 |                          <td className="px-6 py-4">
+
+Expected ")" but found "}"
+198 |                          </td>
+199 |                        </tr>
+200 |                      ))}
+    |                        ^
+201 |                  </tbody>
+202 |                </table>
+
+    at failureErrorWithLog (C:\Users\foxso\OneDrive - Universidad Abierta y a Distancia de M├⌐xico\Im├ígenes\Restaurante POS\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\foxso\OneDrive - Universidad Abierta y a Distancia de M├⌐xico\Im├ígenes\Restaurante POS\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> (C:\Users\foxso\OneDrive - Universidad Abierta y a Distancia de M├⌐xico\Im├ígenes\Restaurante POS\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (C:\Users\foxso\OneDrive - Universidad Abierta y a Distancia de M├⌐xico\Im├ígenes\Restaurante POS\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (C:\Users\foxso\OneDrive - Universidad Abierta y a Distancia de M├⌐xico\Im├ígenes\Restaurante POS\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

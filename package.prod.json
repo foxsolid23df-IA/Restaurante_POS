@@ -1,0 +1,134 @@
+{
+  "name": "restaurante-pos",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:analyze": "vite build --mode analyze",
+    "preview": "vite preview",
+    "preview:prod": "vite preview --mode production --port 4173 --host 0.0.0.0",
+    
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "jest --coverage --watchAll=false",
+    "test:integration": "jest --testPathPattern=integration --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:watch": "jest --watch",
+    
+    "security:check": "npm audit --audit-level moderate",
+    "security:sast": "semgrep --config=.semgrep.yml src/",
+    "security:license": "license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC'",
+    
+    "optimize:images": "imagemin src/assets/images/* --out-dir=src/assets/images/optimized --plugin=pngquant --plugin=mozjpeg --plugin=svgo",
+    "analyze:bundlesize": "npm run build:prod && npx bundle-analyzer dist/static/js/*.js",
+    "size-check": "bundlesize",
+    
+    "docker:build": "docker build -t restaurante-pos:latest .",
+    "docker:build:prod": "docker build -f Dockerfile.prod -t restaurante-pos:prod .",
+    "docker:run": "docker run -p 3000:3000 restaurante-pos:latest",
+    
+    "db:migrate": "supabase db push",
+    "db:migrate:dry": "supabase db push --dry-run",
+    "db:reset": "supabase db reset",
+    "db:seed": "supabase db push --include-seed",
+    "db:types": "supabase gen types typescript --local > src/types/supabase.ts",
+    
+    "deploy:staging": "./scripts/deploy-staging.sh",
+    "deploy:production": "./scripts/deploy-production.sh",
+    "deploy:rollback": "./scripts/rollback.sh",
+    
+    "monitoring:start": "docker-compose -f docker-compose.monitoring.yml up -d",
+    "monitoring:stop": "docker-compose -f docker-compose.monitoring.yml down",
+    
+    "health:check": "curl -f http://localhost:3000/health",
+    "health:full": "./scripts/health-check.sh",
+    
+    "backup:create": "./scripts/backup.sh create",
+    "backup:restore": "./scripts/backup.sh restore",
+    "backup:verify": "./scripts/backup.sh verify"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.91.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.563.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^7.13.0",
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.10",
+    "react-spinners": "^0.13.8",
+    "dompurify": "^3.0.5",
+    "@sentry/react": "^7.108.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "vite": "^7.3.1",
+    
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@types/dompurify": "^3.0.5",
+    "typescript": "^5.3.3",
+    
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5",
+    
+    "jest": "^29.7.0",
+    "@testing-library/react": "^14.2.1",
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/user-event": "^14.5.2",
+    "jest-environment-jsdom": "^29.7.0",
+    
+    "playwright": "^1.41.2",
+    "@playwright/test": "^1.41.2",
+    
+    "bundle-analyzer": "^0.7.0",
+    "bundlesize": "^0.18.1",
+    "imagemin": "^8.0.1",
+    "imagemin-pngquant": "^10.0.0",
+    "imagemin-mozjpeg": "^10.0.0",
+    "imagemin-svgo": "^10.0.1",
+    
+    "supabase": "^1.163.5",
+    
+    "semgrep": "^1.54.0",
+    "license-checker": "^25.0.1",
+    
+    "rollup-plugin-visualizer": "^5.9.2",
+    "terser": "^5.27.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "bundlesize": [
+    {
+      "path": "./dist/assets/js/*.js",
+      "maxSize": "500kb",
+      "compression": "gzip"
+    },
+    {
+      "path": "./dist/assets/css/*.css",
+      "maxSize": "50kb",
+      "compression": "gzip"
+    }
+  ]
+}

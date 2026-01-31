@@ -1,0 +1,62 @@
+# Dockerfile Production - Restaurant POS System
+# Multi-stage build for optimal image size and security
+
+# Build stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY npm-shrinkwrap.json* ./
+
+# Install dependencies with audit
+RUN npm ci --only=production && npm audit fix --audit-level moderate
+
+# Copy source code
+COPY . .
+
+# Build application with production optimizations
+RUN npm run build:prod
+
+# Production stage
+FROM nginx:alpine AS production
+
+# Install necessary packages
+RUN apk add --no-cache \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g -S pos && \
+    adduser -S pos -G pos
+
+# Copy built app from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx/nginx.prod.conf /etc/nginx/nginx.conf
+COPY nginx/security-headers.conf /etc/nginx/conf.d/security-headers.conf
+
+# Create directories for proper permissions
+RUN chown -R pos:pos /usr/share/nginx/html && \
+    chown -R pos:pos /var/cache/nginx && \
+    chown -R pos:pos /var/log/nginx && \
+    chown -R pos:pos /etc/nginx/conf.d
+
+# Create health check script
+COPY docker/healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
+
+# Switch to non-root user
+USER pos
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
