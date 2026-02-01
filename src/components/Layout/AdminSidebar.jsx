@@ -19,15 +19,15 @@ import { clsx } from 'clsx'
 
 const adminMenuItems = [
   { icon: LayoutDashboard, label: 'Panel Principal', path: '/admin', exact: true },
-  { icon: BarChart3, label: 'Reportes y Ventas', path: '/admin/reports' },
-  { icon: UtensilsCrossed, label: 'Menú y Catálogos', path: '/admin/catalog' },
-  { icon: Users, label: 'Personal y Roles', path: '/admin/staff' },
-  { icon: Package, label: 'Inventarios', path: '/admin/inventory' },
-  { icon: Award, label: 'CRM y Lealtad', path: '/admin/crm' },
-  { icon: ShoppingCart, label: 'Compras/Almacén', path: '/admin/purchases' },
-  { icon: MapPin, label: 'Sucursales', path: '/admin/branches' },
-  { icon: LayoutGrid, label: 'Arquitectura de Salón', path: '/admin/salon' },
-  { icon: Settings, label: 'Configuración', path: '/admin/settings' },
+  { icon: BarChart3, label: 'Reportes y Ventas', path: '/admin/reports', roles: ['admin', 'manager'] },
+  { icon: UtensilsCrossed, label: 'Menú y Catálogos', path: '/admin/catalog', roles: ['admin', 'manager'] },
+  { icon: Users, label: 'Personal y Roles', path: '/admin/staff', roles: ['admin'] },
+  { icon: Package, label: 'Inventarios', path: '/admin/inventory', roles: ['admin', 'manager', 'cashier'] },
+  { icon: Award, label: 'CRM y Lealtad', path: '/admin/crm', roles: ['admin', 'manager'] },
+  { icon: ShoppingCart, label: 'Compras/Almacén', path: '/admin/purchases', roles: ['admin', 'manager', 'cashier'] },
+  { icon: MapPin, label: 'Sucursales', path: '/admin/branches', roles: ['admin'] },
+  { icon: LayoutGrid, label: 'Arquitectura de Salón', path: '/admin/salon', roles: ['admin', 'manager'] },
+  { icon: Settings, label: 'Configuración', path: '/admin/settings', roles: ['admin'] },
 ]
 
 export default function AdminSidebar() {
@@ -55,6 +55,11 @@ export default function AdminSidebar() {
 
       <nav className="flex-1 p-6 space-y-2 overflow-y-auto custom-scrollbar">
         {adminMenuItems.map((item) => {
+          // Role Based Filtering
+          if (item.roles && !item.roles.includes(profile?.role)) {
+            return null
+          }
+
           const Icon = item.icon
           const isActive = item.exact 
             ? location.pathname === item.path

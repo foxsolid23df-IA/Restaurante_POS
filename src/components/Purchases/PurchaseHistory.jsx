@@ -1,6 +1,6 @@
 import { History, FileText, Download, Calendar, DollarSign, User } from 'lucide-react'
 
-export default function PurchaseHistory({ history }) {
+export default function PurchaseHistory({ history, onViewDetails }) {
   return (
     <div className="bg-white rounded-[3rem] p-10 shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
@@ -76,8 +76,11 @@ export default function PurchaseHistory({ history }) {
                    </div>
                 </td>
                 <td className="px-10 py-8 text-right rounded-r-[2rem]">
-                   <button className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-primary hover:border-primary/20 hover:shadow-lg transition-all transform hover:scale-110 active:scale-90">
-                      <Download size={20}/>
+                   <button 
+                     onClick={() => onViewDetails(p)}
+                     className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-primary hover:border-primary/20 hover:shadow-lg transition-all transform hover:scale-110 active:scale-90"
+                   >
+                      <FileText size={20}/>
                    </button>
                 </td>
               </tr>

@@ -47,10 +47,12 @@ export default function Users() {
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto bg-slate-50 min-h-screen">
-      <StaffHeader onAddStaff={() => {
-        setEditingUser(null)
-        setShowModal(true)
-      }} />
+      <StaffHeader 
+        onAddStaff={() => {
+          setEditingUser(null)
+          setShowModal(true)
+        }} 
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {users.map((user) => (

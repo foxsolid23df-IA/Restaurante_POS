@@ -4,17 +4,19 @@ export default function ProductCard({ product, onEdit, onDelete, onRecipe, onTog
   return (
     <div className="bg-white rounded-[2.5rem] p-4 border border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:scale-[1.02] transition-all group duration-300">
       <div className="relative h-56 rounded-[2rem] overflow-hidden mb-6 bg-slate-100">
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
-            <button
-              onClick={() => onToggleActive(product)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider backdrop-blur-md transition-all shadow-sm border border-white/20 ${
-                product.is_active
-                  ? 'bg-emerald-500/90 text-white'
-                  : 'bg-rose-500/90 text-white'
-              }`}
-            >
-              {product.is_active ? 'Activo' : 'Inactivo'}
-            </button>
+        <div className="absolute top-4 right-4 z-10">
+            <label className="relative inline-flex items-center cursor-pointer group/switch">
+              <input 
+                type="checkbox" 
+                className="sr-only peer"
+                checked={product.is_active}
+                onChange={() => onToggleActive(product)}
+              />
+              <div className="w-12 h-6 bg-slate-900/40 backdrop-blur-md rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 border border-white/20 shadow-lg"></div>
+              <span className="ml-2 text-[10px] font-black text-white uppercase tracking-widest drop-shadow-md hidden group-hover/switch:block transition-all bg-slate-900/40 px-2 py-1 rounded-lg backdrop-blur-sm">
+                {product.is_active ? 'Disponible' : 'Agotado'}
+              </span>
+            </label>
         </div>
         
         {product.image_url ? (

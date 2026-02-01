@@ -15,6 +15,7 @@ import {
   Calculator
 } from 'lucide-react'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
+import { toast } from 'sonner'
 
 export default function RecipeBuilder() {
   const { productId } = useParams()
@@ -149,11 +150,11 @@ export default function RecipeBuilder() {
         if (error) throw error
       }
 
-      alert('Receta avanzada guardada correctamente')
+      toast.success('Receta avanzada guardada correctamente')
       navigate('/admin/catalog')
     } catch (error) {
       console.error('Error saving recipe:', error)
-      alert('Error al guardar: Asegúrate de haber ejecutado el SQL de wastage_percentage')
+      toast.error('Error al guardar: Asegúrate de haber ejecutado el SQL de wastage_percentage')
     } finally {
       setSaving(false)
     }

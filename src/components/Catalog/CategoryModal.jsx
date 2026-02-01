@@ -3,36 +3,46 @@ import { supabase } from '@/lib/supabase'
 import { X, Save, Loader2, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePrinters } from '@/hooks/usePrinters'
+import { useMenus } from '@/hooks/useMenus'
+import { LayoutGrid } from 'lucide-react'
 
 export default function CategoryModal({ category, onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: '',
-    printer_id: ''
+    printer_id: '',
+    menu_id: ''
   })
   const [printersList, setPrintersList] = useState([])
+  const [menusList, setMenusList] = useState([])
   const [loading, setLoading] = useState(false)
-  const [fetchingPrinters, setFetchingPrinters] = useState(true)
+  const [fetchingData, setFetchingData] = useState(true)
   const { getPrinters } = usePrinters()
+  const { fetchMenus } = useMenus()
 
   useEffect(() => {
     if (category) {
       setFormData({
         name: category.name || '',
-        printer_id: category.printer_id || ''
+        printer_id: category.printer_id || '',
+        menu_id: category.menu_id || ''
       })
     }
-    loadPrinters()
+    loadInitialData()
   }, [category])
 
-  const loadPrinters = async () => {
+  const loadInitialData = async () => {
     try {
-      const printers = await getPrinters()
+      const [printers, menus] = await Promise.all([
+        getPrinters(),
+        fetchMenus()
+      ])
       setPrintersList(printers || [])
+      setMenusList(menus || [])
     } catch (error) {
-      console.error('Error loading printers:', error)
-      toast.error('Error al cargar impresoras')
+      console.error('Error loading data:', error)
+      toast.error('Error al cargar datos')
     } finally {
-      setFetchingPrinters(false)
+      setFetchingData(false)
     }
   }
 
@@ -49,7 +59,8 @@ export default function CategoryModal({ category, onClose, onSave }) {
     try {
       const dataToSubmit = {
         name: formData.name.trim(),
-        printer_id: formData.printer_id || null
+        printer_id: formData.printer_id || null,
+        menu_id: formData.menu_id || null
       }
 
       if (category) {
@@ -114,9 +125,32 @@ export default function CategoryModal({ category, onClose, onSave }) {
           <div>
              <div className="flex justify-between items-center mb-3">
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Vincular a Menú (Horarios)
+                </label>
+                {fetchingData && <Loader2 size={12} className="animate-spin text-primary" />}
+             </div>
+            
+            <div className="relative">
+               <LayoutGrid className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+               <select
+                 value={formData.menu_id}
+                 onChange={(e) => setFormData({ ...formData, menu_id: e.target.value })}
+                 className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900 transition-all appearance-none cursor-pointer"
+               >
+                 <option value="">Disponible siempre (Sin Horario)</option>
+                 {menusList.map(m => (
+                   <option key={m.id} value={m.id}>{m.name}</option>
+                 ))}
+               </select>
+            </div>
+          </div>
+
+          <div>
+             <div className="flex justify-between items-center mb-3">
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
                   Enrutar a Impresora
                 </label>
-                {fetchingPrinters && <Loader2 size={12} className="animate-spin text-primary" />}
+                {fetchingData && <Loader2 size={12} className="animate-spin text-primary" />}
              </div>
             
             <div className="relative">
@@ -132,8 +166,8 @@ export default function CategoryModal({ category, onClose, onSave }) {
                  ))}
                </select>
             </div>
-            <p className="text-[10px] text-slate-400 mt-3 px-2 font-medium bg-blue-50/50 p-3 rounded-xl border border-blue-50 text-blue-400">
-              * Las comandas de esta categoría se enviarán automáticamente a la impresora seleccionada.
+            <p className="text-[10px] font-medium bg-blue-50/50 p-3 rounded-xl border border-blue-50 text-blue-500 mt-4 leading-relaxed">
+              * Las comandas de esta categoría se enviarán automáticamente a la zona de producción seleccionada.
             </p>
           </div>
 

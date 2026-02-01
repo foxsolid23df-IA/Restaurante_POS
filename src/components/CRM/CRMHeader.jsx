@@ -1,6 +1,6 @@
 import { Search, UserPlus, Users, Calendar, Award } from 'lucide-react'
 
-export default function CRMHeader({ activeTab, setActiveTab, searchTerm, setSearchTerm, onAddCustomer }) {
+export default function CRMHeader({ activeTab, setActiveTab, searchTerm, setSearchTerm, onAddCustomer, onAddReservation }) {
   const tabs = [
     { id: 'customers', label: 'Directorio', icon: Users },
     { id: 'reservations', label: 'Reservaciones', icon: Calendar },
@@ -14,13 +14,24 @@ export default function CRMHeader({ activeTab, setActiveTab, searchTerm, setSear
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">CRM e Inteligencia de Clientes</h1>
           <p className="text-slate-500 font-medium mt-2">Gestión de lealtad, comportamiento y reservaciones estratégicas</p>
         </div>
-        <button 
-          onClick={onAddCustomer}
-          className="bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black hover:bg-black transition-all shadow-2xl shadow-slate-200 flex items-center gap-3 text-sm uppercase tracking-widest active:scale-95"
-        >
-          <UserPlus size={20} />
-          Nuevo Cliente
-        </button>
+        
+        {activeTab === 'reservations' ? (
+          <button 
+            onClick={onAddReservation}
+            className="bg-primary text-white px-10 py-5 rounded-[2rem] font-black hover:bg-emerald-600 transition-all shadow-2xl shadow-emerald-200 flex items-center gap-3 text-sm uppercase tracking-widest active:scale-95"
+          >
+            <Calendar size={20} />
+            Nueva Reservación
+          </button>
+        ) : (
+          <button 
+            onClick={onAddCustomer}
+            className="bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black hover:bg-black transition-all shadow-2xl shadow-slate-200 flex items-center gap-3 text-sm uppercase tracking-widest active:scale-95"
+          >
+            <UserPlus size={20} />
+            Nuevo Cliente
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-white p-4 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">

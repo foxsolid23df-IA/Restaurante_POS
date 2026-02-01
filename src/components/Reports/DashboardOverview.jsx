@@ -1,4 +1,4 @@
-import { DollarSign, ShoppingCart, Target, Zap, Clock, Layers, Sparkles } from 'lucide-react'
+import { DollarSign, ShoppingCart, Target, Zap, Clock, Layers, Sparkles, FileText } from 'lucide-react'
 import { 
   AreaChart, Area, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -61,10 +61,33 @@ export default function DashboardOverview({ data, formatCurrency }) {
               </h3>
               <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mt-2 px-1">Curva de ocupación y ventas por segmento</p>
             </div>
+
+            <button
+              onClick={() => {
+                const excelData = (data.hourlyData || []).map(h => ({
+                  'Hora': `${h.hour}:00`,
+                  'Ventas Brutas': formatCurrency(h.sales),
+                  'Número de Órdenes': h.orders,
+                  'Ticket Promedio': formatCurrency(h.avgTicket),
+                  'Estado': h.peak ? 'Hora Pico' : 'Normal'
+                }));
+                // Esta función se puede llamar directamente si exportToExcel está disponible
+                // O podemos pasarla como prop. Por simplicidad, ya que useReports se usa en el padre,
+                // voy a asumir que queremos una función local o pasada por props.
+                if (data.onExportExcel) {
+                  data.onExportExcel(excelData, `flujo-horario-${new Date().toISOString().split('T')[0]}.xlsx`);
+                }
+              }}
+              className="group/btn flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-900 hover:text-white text-slate-400 rounded-xl transition-all border border-slate-100 shadow-sm"
+              title="Exportar a Excel"
+            >
+              <FileText size={14} className="group-hover/btn:text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Excel</span>
+            </button>
           </div>
           
           <div className="h-[400px] w-full relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
               <AreaChart data={data.hourlyData || []}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -128,7 +151,7 @@ export default function DashboardOverview({ data, formatCurrency }) {
               </h3>
               
               <div className="h-[220px] w-full relative mb-10">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
                   <PieChart>
                     <Pie
                       data={pieData}

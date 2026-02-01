@@ -3,6 +3,7 @@
 -- SUPPLIERS
 CREATE TABLE IF NOT EXISTS public.suppliers (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    branch_id UUID, -- Optional linkage to specific branch or null for global
     name TEXT NOT NULL,
     contact_name TEXT,
     phone TEXT,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
 -- PURCHASES (Invoices/Expenses)
 CREATE TABLE IF NOT EXISTS public.purchases (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    branch_id UUID NOT NULL,
     supplier_id UUID REFERENCES public.suppliers(id) ON DELETE SET NULL,
     user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     invoice_number TEXT,

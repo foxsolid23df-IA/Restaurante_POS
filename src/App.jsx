@@ -35,7 +35,7 @@ import SplitBill from '@/pages/SplitBill'
 import SalonLayout from '@/pages/admin/SalonLayout'
 
 // Protected Route wrapper
-function ProtectedRoute({ children, requiredRole }) {
+function ProtectedRoute({ children, allowedRoles }) {
   const { user, profile, loading } = useAuthStore()
   const { fetchSettings } = useBusinessStore()
   const { initializeBranch } = useBranchStore()
@@ -60,7 +60,7 @@ function ProtectedRoute({ children, requiredRole }) {
   }
 
   // Role check if required
-  if (requiredRole && profile?.role !== requiredRole && profile?.role !== 'admin') {
+  if (allowedRoles && !allowedRoles.includes(profile?.role)) {
     return <Navigate to="/pos" replace />
   }
 
@@ -85,7 +85,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
               <AdminLayout />
             </ProtectedRoute>
           }

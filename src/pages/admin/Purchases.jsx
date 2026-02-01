@@ -11,6 +11,8 @@ import NewPurchaseForm from '@/components/Purchases/NewPurchaseForm'
 import InventorySearch from '@/components/Purchases/InventorySearch'
 import PurchaseHistory from '@/components/Purchases/PurchaseHistory'
 import SuppliersTab from '@/components/Purchases/SuppliersTab'
+import InventoryModal from '@/components/Catalog/InventoryModal'
+import PurchaseDetailsModal from '@/components/Purchases/PurchaseDetailsModal'
 
 export default function Purchases() {
   const { profile } = useAuthStore()
@@ -20,6 +22,8 @@ export default function Purchases() {
   const [activeTab, setActiveTab] = useState('new')
   const [suppliers, setSuppliers] = useState([])
   const [purchaseHistory, setPurchaseHistory] = useState([])
+  const [showQuickInvModal, setShowQuickInvModal] = useState(false)
+  const [selectedPurchase, setSelectedPurchase] = useState(null)
   
   // New Purchase State
   const [newPurchase, setNewPurchase] = useState({
@@ -139,15 +143,36 @@ export default function Purchases() {
               searchInv={searchInv}
               setSearchInv={setSearchInv}
               onAddToCart={handleAddToCart}
+              onQuickCreate={() => setShowQuickInvModal(true)}
             />
           </div>
         </div>
       )}
 
+      {showQuickInvModal && (
+        <InventoryModal 
+          onClose={() => setShowQuickInvModal(false)}
+          onSave={() => {
+            setShowQuickInvModal(false)
+            loadInitialData()
+          }}
+        />
+      )}
+
       {activeTab === 'history' && (
         <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
-          <PurchaseHistory history={purchaseHistory} />
+          <PurchaseHistory 
+            history={purchaseHistory} 
+            onViewDetails={(p) => setSelectedPurchase(p)}
+          />
         </div>
+      )}
+
+      {selectedPurchase && (
+        <PurchaseDetailsModal 
+          purchase={selectedPurchase}
+          onClose={() => setSelectedPurchase(null)}
+        />
       )}
 
       {activeTab === 'suppliers' && (

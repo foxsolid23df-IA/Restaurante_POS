@@ -154,6 +154,26 @@ export function usePurchases() {
     } finally {
       setLoading(false)
     }
+  }, [currentBranch])
+
+  const getPurchaseDetails = useCallback(async (purchaseId) => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('purchase_items')
+        .select(`
+          *,
+          inventory_items(name, unit)
+        `)
+        .eq('purchase_id', purchaseId)
+      if (error) throw error
+      return data
+    } catch (err) {
+      console.error('Error fetching purchase details:', err)
+      return []
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   return {
@@ -162,6 +182,56 @@ export function usePurchases() {
     getSuppliers,
     saveSupplier,
     getPurchases,
-    createPurchase
+    createPurchase,
+    getPurchaseDetails,
+    // Category Management
+    getSupplierCategories: useCallback(async () => {
+      setLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('supplier_categories')
+          .select('*')
+          .order('name')
+        if (error) throw error
+        return data
+      } catch (err) {
+        setError(err.message)
+        return []
+      } finally {
+        setLoading(false)
+      }
+    }, []),
+    addSupplierCategory: useCallback(async (name) => {
+      setLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('supplier_categories')
+          .insert([{ name, branch_id: currentBranch.id }])
+          .select()
+          .single()
+        if (error) throw error
+        return data
+      } catch (err) {
+        setError(err.message)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    }, [currentBranch]),
+    deleteSupplierCategory: useCallback(async (id) => {
+      setLoading(true)
+      try {
+        const { error } = await supabase
+          .from('supplier_categories')
+          .delete()
+          .eq('id', id)
+        if (error) throw error
+      } catch (err) {
+        setError(err.message)
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    }, [])
   }
 }

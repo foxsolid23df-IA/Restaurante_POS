@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { X } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ProductModal({ product, categories, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -51,7 +52,7 @@ export default function ProductModal({ product, categories, onClose, onSave }) {
       onSave()
     } catch (error) {
       console.error('Error saving product:', error)
-      alert('Error al guardar el producto')
+      toast.error('Error al guardar el producto')
     } finally {
       setLoading(false)
     }

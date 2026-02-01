@@ -61,17 +61,44 @@ export default function POS() {
     }
   }, [selectedTable, cart, setTable])
 
+  const isMenuSectionActive = (menu) => {
+    if (!menu) return true
+    if (!menu.is_active) return false
+
+    const now = new Date()
+    const currentDay = now.getDay()
+    const currentTimeStr = now.toTimeString().split(' ')[0]
+    
+    // Check days
+    if (menu.active_days && !menu.active_days.includes(currentDay)) return false
+
+    // Check time
+    if (menu.start_time && menu.end_time) {
+      if (menu.start_time < menu.end_time) {
+        return currentTimeStr >= menu.start_time && currentTimeStr <= menu.end_time
+      } else {
+        // Crosses midnight
+        return currentTimeStr >= menu.start_time || currentTimeStr <= menu.end_time
+      }
+    }
+    return true
+  }
+
   const loadInitialData = async () => {
     try {
       const [categoriesRes, productsRes] = await Promise.all([
-        supabase.from('categories').select('*').order('name'),
+        supabase.from('categories').select('*, menus(*)').order('name'),
         supabase.from('products').select('*').eq('is_active', true).order('name')
       ])
+      
       if (categoriesRes.error) throw categoriesRes.error
       if (productsRes.error) throw productsRes.error
-      setCategories(categoriesRes.data || [])
+
+      // Filter categories based on menu schedules
+      const activeCategories = (categoriesRes.data || []).filter(cat => isMenuSectionActive(cat.menus))
+      
+      setCategories(activeCategories)
       setProducts(productsRes.data || [])
-      // fetchOrders is not defined in the scope, simplified
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error cargando datos del POS')

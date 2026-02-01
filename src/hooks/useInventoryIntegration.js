@@ -8,11 +8,12 @@ import { useBranchStore } from '@/store/branchStore'
 
 // Hook principal
 export function useInventoryIntegration() {
+  const { currentBranch } = useBranchStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [inventoryUpdates, setInventoryUpdates] = useState([])
   const [alerts, setAlerts] = useState([])
-  const { currentBranch } = useBranchStore()
+  const [items, setItems] = useState([])
 
   // Obtener receta de un producto
   const getProductRecipe = useCallback(async (productId) => {
@@ -69,8 +70,7 @@ export function useInventoryIntegration() {
       const { error } = await supabase
         .from('inventory_items')
         .update({
-          current_stock: newStock,
-          updated_at: new Date().toISOString()
+          current_stock: newStock
         })
         .eq('id', inventoryItemId)
 
@@ -89,6 +89,25 @@ export function useInventoryIntegration() {
       throw err
     }
   }, [getInventoryStock])
+
+  // Obtener todos los items de inventario (para búsqueda)
+  const getInventoryItems = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('branch_id', currentBranch.id)
+        .order('name')
+
+      if (error) throw error
+      const results = data || []
+      setItems(results)
+      return results
+    } catch (err) {
+      console.error('Error getting inventory items:', err)
+      return []
+    }
+  }, [currentBranch])
 
   // Obtener item completo de inventario
   const getInventoryItem = useCallback(async (inventoryItemId) => {
@@ -400,6 +419,7 @@ export function useInventoryIntegration() {
     error,
     inventoryUpdates,
     alerts,
+    items,
 
     // Funciones principales
     processOrderInventoryDeduction,
@@ -409,6 +429,7 @@ export function useInventoryIntegration() {
     // Funciones auxiliares
     getProductRecipe,
     getInventoryStock,
+    getInventoryItems,
     updateInventoryStock,
     
     // Gestión de alertas

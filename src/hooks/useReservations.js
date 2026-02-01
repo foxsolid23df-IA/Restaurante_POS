@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useBranchStore } from '@/store/branchStore'
 
 export function useReservations() {
   const [reservations, setReservations] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const { currentBranch } = useBranchStore()
 
   const fetchReservations = useCallback(async (dateFilters = {}) => {
+    if (!currentBranch?.id) return
     setLoading(true)
     setError(null)
     try {
@@ -17,6 +20,7 @@ export function useReservations() {
           customers(name, phone, email),
           tables(name, capacity, area_id)
         `)
+        .eq('branch_id', currentBranch.id)
         .order('reservation_date', { ascending: true })
 
       if (dateFilters.startDate) {
@@ -36,16 +40,59 @@ export function useReservations() {
     } finally {
       setLoading(false)
     }
+  }, [currentBranch?.id])
+
+  // Verificar disponibilidad futura (MOVIDO ARRIBA PARA EVITAR REFERENCE ERROR)
+  const checkTableAvailability = useCallback(async (tableId, date, duration) => {
+    try {
+      const startTime = new Date(date)
+      const endTime = new Date(startTime.getTime() + duration * 60000)
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('reservation_date, duration_minutes')
+        .eq('table_id', tableId)
+        .not('status', 'eq', 'cancelled')
+
+      if (error) throw error
+
+      const hasConflict = data.some(res => {
+        const resStart = new Date(res.reservation_date)
+        const resEnd = new Date(resStart.getTime() + (res.duration_minutes || 120) * 60000)
+        
+        return (startTime < resEnd && endTime > resStart)
+      })
+
+      return !hasConflict
+    } catch (err) {
+      console.error('Error checking availability:', err)
+      return false
+    }
   }, [])
 
   const createReservation = useCallback(async (reservationData) => {
+    if (!currentBranch?.id) throw new Error('No se ha seleccionado una sucursal')
     setLoading(true)
     setError(null)
     try {
+      // 1. Verificar disponibilidad si se asignó mesa
+      if (reservationData.table_id) {
+        const isAvailable = await checkTableAvailability(
+          reservationData.table_id, 
+          reservationData.reservation_date, 
+          reservationData.duration_minutes || 120
+        )
+        
+        if (!isAvailable) {
+          throw new Error('Lo sentimos, esta mesa ya tiene una reservación para ese horario.')
+        }
+      }
+
       const { data, error } = await supabase
         .from('reservations')
         .insert([{
           ...reservationData,
+          branch_id: currentBranch.id,
           duration_minutes: reservationData.duration_minutes || 120, // Default 2h
         }])
         .select(`
@@ -65,7 +112,7 @@ export function useReservations() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id, checkTableAvailability])
 
   const updateReservationStatus = useCallback(async (id, status) => {
     try {
@@ -94,34 +141,6 @@ export function useReservations() {
     } catch (err) {
       console.error('Error updating reservation status:', err)
       throw err
-    }
-  }, [])
-
-  // Verificar disponibilidad futura
-  const checkTableAvailability = useCallback(async (tableId, date, duration) => {
-    try {
-      const startTime = new Date(date)
-      const endTime = new Date(startTime.getTime() + duration * 60000)
-
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('reservation_date, duration_minutes')
-        .eq('table_id', tableId)
-        .not('status', 'eq', 'cancelled')
-
-      if (error) throw error
-
-      const hasConflict = data.some(res => {
-        const resStart = new Date(res.reservation_date)
-        const resEnd = new Date(resStart.getTime() + (res.duration_minutes || 120) * 60000)
-        
-        return (startTime < resEnd && endTime > resStart)
-      })
-
-      return !hasConflict
-    } catch (err) {
-      console.error('Error checking availability:', err)
-      return false
     }
   }, [])
 

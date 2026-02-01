@@ -29,7 +29,7 @@ export default function ProductReports() {
   const {
     getInventoryAnalysis,
     getProductAnalysis,
-    exportToCSV,
+    exportToExcel,
     formatCurrency,
     loading
   } = useReports()
@@ -61,8 +61,17 @@ export default function ProductReports() {
   }
 
   const handleExport = (data, filename) => {
-    const headers = ['name', 'category', 'totalSold', 'totalRevenue', 'profitMargin', 'turnoverRate', 'stock']
-    exportToCSV(data, filename, headers)
+    // Mapear datos para que tengan nombres de columnas amigables en Excel
+    const excelData = data.map(p => ({
+      'Producto': p.name,
+      'Categoría': p.category || 'Sin categoría',
+      'Unidades Vendidas': p.quantity || 0,
+      'Ingresos Totales': formatCurrency(p.revenue || 0),
+      'Margen de Utilidad': `${(p.profitability || 0).toFixed(1)}%`,
+      'Stock Actual': p.stock || 0
+    }))
+    
+    exportToExcel(excelData, filename.replace('.csv', '.xlsx'))
   }
 
   if (!reportData) {
@@ -149,7 +158,7 @@ export default function ProductReports() {
                 className="flex items-center text-sm font-bold text-primary hover:text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Exportar CSV
+                Exportar Excel
               </button>
             </div>
             <div className="overflow-x-auto">

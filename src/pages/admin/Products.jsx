@@ -28,7 +28,7 @@ export default function Products() {
   const loadData = async () => {
     try {
       const [productsRes, categoriesRes] = await Promise.all([
-        supabase.from('products').select('*, categories(name, printer_destination)').order('name'),
+        supabase.from('products').select('*, categories(name, printers(name))').order('name'),
         supabase.from('categories').select('*').order('name')
       ])
 
@@ -46,13 +46,29 @@ export default function Products() {
   }
 
   const handleDelete = async (product) => {
-    // Custom confirm via toast could be complex, using native confirm for safety but wrapped in logic
-    // Or better, use a sonner promise or custom dialog. For now, native confirm is acceptable if styled is not ready.
-    if (!confirm(`¿Estás seguro de eliminar "${product.name}"?`)) return
-
     try {
+      // 1. Check for sales history details
+      const { count, error: countError } = await supabase
+        .from('order_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('product_id', product.id)
+
+      if (countError) throw countError
+
+      if (count > 0) {
+        toast.error('No se puede eliminar el producto', {
+          description: `Este producto tiene ${count} venta(s) registrada(s). Para mantener la integridad de los reportes, le sugerimos desactivarlo en lugar de eliminarlo.`,
+          duration: 5000,
+        })
+        return
+      }
+
+      // 2. Proceed if safe
+      if (!confirm(`¿Estás seguro de eliminar "${product.name}"?`)) return
+
       const { error } = await supabase.from('products').delete().eq('id', product.id)
       if (error) throw error
+      
       toast.success('Producto eliminado correctamente')
       loadData()
     } catch (error) {

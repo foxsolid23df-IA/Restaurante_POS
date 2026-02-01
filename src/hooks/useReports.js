@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { TrendingUp, TrendingDown, Calendar, Download, Filter, DollarSign } from 'lucide-react'
+import { toast } from 'sonner'
 
 // Utility functions para reportes
 const formatCurrency = (amount) => new Intl.NumberFormat('es-MX', {
@@ -783,23 +784,27 @@ export function useReports() {
     }
   }
 
-  // Función de exportación
-  const exportToCSV = (data, filename, headers) => {
-    const csvContent = [
-      headers,
-      ...data.map(item => headers.map(header => item[header]))
-    ].map(row => row.join(',')).join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', filename)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  // Función de exportación a Excel
+  const exportToExcel = (data, filename) => {
+    try {
+      const XLSX = window.XLSX;
+      if (!XLSX) {
+        toast.error("Error: Librería de Excel no cargada.");
+        return;
+      }
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
+      
+      // Asegurar extensión .xlsx
+      const fullFilename = filename.endsWith('.xlsx') ? filename : `${filename.split('.')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fullFilename);
+      
+      toast.success(`Reporte exportado: ${fullFilename}`);
+    } catch (err) {
+      console.error("Excel Export Error:", err);
+      toast.error("No se pudo generar el archivo Excel");
+    }
   }
 
   return {
@@ -818,7 +823,7 @@ export function useReports() {
     getAdvancedFinancials,
     getCostVsSales,
     getIngredientForecast,
-    exportToCSV,
+    exportToExcel,
     formatCurrency,
     formatDate
   }

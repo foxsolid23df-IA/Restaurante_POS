@@ -1,6 +1,6 @@
-import { Edit2, Trash2, ClipboardList, Package, Info } from 'lucide-react'
+import { Edit2, Trash2, ClipboardList, Package, Info, History } from 'lucide-react'
 
-export default function InventoryTable({ items, onEdit, onDelete }) {
+export default function InventoryTable({ items, onEdit, onDelete, onAdjust, onHistory }) {
   return (
     <section className="bg-white rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden">
       <div className="p-10 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-50/30 backdrop-blur-md">
@@ -95,6 +95,20 @@ export default function InventoryTable({ items, onEdit, onDelete }) {
                   </td>
                   <td className="px-10 py-8 text-right">
                     <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 translate-x-4">
+                      <button 
+                        onClick={() => onAdjust(item)} 
+                        className="p-4 bg-emerald-500 text-white rounded-[1.2rem] hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-100"
+                        title="Ajuste de Stock"
+                      >
+                        <Package size={18} />
+                      </button>
+                      <button 
+                        onClick={() => onHistory(item)} 
+                        className="p-4 bg-blue-600 text-white rounded-[1.2rem] hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
+                        title="Historial de Movimientos"
+                      >
+                        <History size={18} />
+                      </button>
                       <button 
                         onClick={() => onEdit(item)} 
                         className="p-4 bg-slate-900 text-white rounded-[1.2rem] hover:bg-black transition-all shadow-xl shadow-slate-200"

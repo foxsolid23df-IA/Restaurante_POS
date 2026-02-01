@@ -23,7 +23,7 @@ export default function SalesReports() {
     getAdvancedFinancials,
     getCostVsSales,
     getIngredientForecast,
-    exportToCSV,
+    exportToExcel,
     formatCurrency,
     formatDate,
     loading: reportsLoading,
@@ -99,11 +99,6 @@ export default function SalesReports() {
   }
 
   const handleExport = () => {
-    const headers = [
-      'Fecha Inicio', 'Fecha Fin', 'Ventas Totales', 'Órdenes', 
-      'Ventas Efectivo', 'Ventas Tarjeta', 'Ticket Promedio'
-    ]
-    
     const row = {
       'Fecha Inicio': formatDate(filters.startDate),
       'Fecha Fin': formatDate(filters.endDate),
@@ -114,7 +109,7 @@ export default function SalesReports() {
       'Ticket Promedio': formatCurrency((data.currentSummary?.totalSales || 0) / (data.currentSummary?.totalOrders || 1))
     }
 
-    exportToCSV([row], `inteligencia-ventas-${filters.period}.csv`, headers)
+    exportToExcel([row], `inteligencia-ventas-${filters.period}.xlsx`)
   }
 
   if (internalLoading && !data.currentSummary) {
@@ -163,7 +158,7 @@ export default function SalesReports() {
         )}
 
         <div className="animate-in fade-in duration-1000">
-          {activeTab === 'overview' && <DashboardOverview data={data} formatCurrency={formatCurrency} />}
+          {activeTab === 'overview' && <DashboardOverview data={{ ...data, onExportExcel: exportToExcel }} formatCurrency={formatCurrency} />}
           {activeTab === 'products' && <ProductPerformance data={data} formatCurrency={formatCurrency} />}
           {activeTab === 'profitability' && <ProfitabilityAnalysis data={data} formatCurrency={formatCurrency} />}
           {activeTab === 'financial' && <FinancialSummary data={data} formatCurrency={formatCurrency} />}

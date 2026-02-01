@@ -8,12 +8,16 @@ import { toast } from 'sonner'
 import InventoryHeader from '@/components/Inventory/InventoryHeader'
 import CriticalStockAlerts from '@/components/Inventory/CriticalStockAlerts'
 import InventoryTable from '@/components/Inventory/InventoryTable'
-import InventoryModal from '@/components/Catalog/InventoryModal' // Using the upgraded modal
+import InventoryModal from '@/components/Catalog/InventoryModal'
+import StockAdjustmentModal from '@/components/Inventory/StockAdjustmentModal'
+import MovementHistoryModal from '@/components/Inventory/MovementHistoryModal'
 
 export default function Inventory() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showAdjustModal, setShowAdjustModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const { currentBranch } = useBranchStore()
 
@@ -93,6 +97,14 @@ export default function Inventory() {
           setShowModal(true);
         }}
         onDelete={handleDelete}
+        onAdjust={(item) => {
+          setEditingItem(item);
+          setShowAdjustModal(true);
+        }}
+        onHistory={(item) => {
+          setEditingItem(item);
+          setShowHistoryModal(true);
+        }}
       />
 
       {showModal && (
@@ -100,6 +112,21 @@ export default function Inventory() {
           item={editingItem}
           onClose={() => { setShowModal(false); setEditingItem(null); }}
           onSave={() => { loadItems(); setShowModal(false); setEditingItem(null); }}
+        />
+      )}
+
+      {showAdjustModal && (
+        <StockAdjustmentModal
+          item={editingItem}
+          onClose={() => { setShowAdjustModal(false); setEditingItem(null); }}
+          onSave={() => { loadItems(); setShowAdjustModal(false); setEditingItem(null); }}
+        />
+      )}
+
+      {showHistoryModal && (
+        <MovementHistoryModal
+          item={editingItem}
+          onClose={() => { setShowHistoryModal(false); setEditingItem(null); }}
         />
       )}
     </div>

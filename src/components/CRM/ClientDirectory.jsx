@@ -1,6 +1,6 @@
-import { Phone, Mail, Award, Edit3, Trash2, Heart, Star, ShieldCheck } from 'lucide-react'
+import { Phone, Mail, Award, Edit3, Trash2, Heart, Star, ShieldCheck, History } from 'lucide-react'
 
-export default function ClientDirectory({ customers, onEdit, onDelete, loading }) {
+export default function ClientDirectory({ customers, onEdit, onDelete, onViewHistory, onAdjustPoints, loading }) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
@@ -19,13 +19,15 @@ export default function ClientDirectory({ customers, onEdit, onDelete, loading }
           customer={customer} 
           onEdit={() => onEdit(customer)} 
           onDelete={() => onDelete(customer.id)} 
+          onViewHistory={() => onViewHistory(customer)}
+          onAdjustPoints={() => onAdjustPoints(customer)}
         />
       ))}
     </div>
   )
 }
 
-function ClientCard({ customer, onEdit, onDelete }) {
+function ClientCard({ customer, onEdit, onDelete, onViewHistory, onAdjustPoints }) {
   const points = customer.loyalty_points || 0
   const isVIP = points > 500
 
@@ -55,7 +57,7 @@ function ClientCard({ customer, onEdit, onDelete }) {
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100/50">
+        <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100/50 cursor-pointer hover:bg-slate-100/50 transition-colors" onClick={onAdjustPoints}>
            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
              <Heart size={10} className="text-rose-400" /> Puntos Elite
            </p>
@@ -84,20 +86,38 @@ function ClientCard({ customer, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div className="flex gap-3">
-        <button 
-          onClick={onEdit}
-          className="flex-[2] py-5 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95"
-        >
-          <Edit3 size={16} />
-          Gestionar
-        </button>
-        <button 
-          onClick={onDelete}
-          className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-[0.1em] hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center border border-rose-100/50 active:scale-95"
-        >
-          <Trash2 size={18} />
-        </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <button 
+            onClick={onViewHistory}
+            className="flex-1 py-4 bg-slate-100 text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+          >
+            <History size={14} />
+            Historial
+          </button>
+          <button 
+            onClick={onAdjustPoints}
+            className="flex-1 py-4 bg-primary/10 text-primary rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95 border border-primary/20"
+          >
+            <Award size={14} />
+            Puntos
+          </button>
+        </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={onEdit}
+            className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95"
+          >
+            <Edit3 size={14} />
+            Editar
+          </button>
+          <button 
+            onClick={onDelete}
+            className="flex-1 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2 border border-rose-100/50 active:scale-95"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
     </div>
   )

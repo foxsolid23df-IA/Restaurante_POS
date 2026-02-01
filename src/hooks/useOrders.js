@@ -152,7 +152,11 @@ export function useOrders() {
       // --- LOGICA DE LEALTAD ---
       if (cartData.customer_id) {
         try {
-          const pointsEarned = Math.floor(totalAmount / 10) // 1 punto por cada $10
+          const pointsPerUnit = settings?.points_per_currency || 1
+          const currencyUnit = settings?.currency_unit_amount || 10
+          
+          const pointsEarned = Math.floor((totalAmount / currencyUnit) * pointsPerUnit)
+
           if (pointsEarned > 0) {
             await supabase.from('loyalty_transactions').insert([{
               customer_id: cartData.customer_id,

@@ -149,8 +149,8 @@ export default function ProductModal({ product, categories, onClose, onSave }) {
             
             <div className="md:col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-100/50 flex items-center justify-between">
               <div>
-                 <p className="font-bold text-slate-900 text-sm">Visibilidad en Menú</p>
-                 <p className="text-xs text-slate-500 font-medium mt-1">Habilita o deshabilita este producto en el POS</p>
+                 <p className="font-bold text-slate-900 text-sm">Disponibilidad Inmediata</p>
+                 <p className="text-xs text-slate-500 font-medium mt-1">Marcar como "Agotado" para ocultarlo temporalmente del POS</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input 

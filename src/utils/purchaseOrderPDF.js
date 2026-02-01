@@ -1,8 +1,8 @@
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 export const generatePurchaseOrderPDF = (forecastData, totalCost) => {
-  const doc = jsPDF()
+  const doc = new jsPDF()
   const today = new Date().toLocaleDateString('es-MX', {
     year: 'numeric',
     month: 'long',
@@ -48,7 +48,7 @@ export const generatePurchaseOrderPDF = (forecastData, totalCost) => {
     new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(item.estimatedCost)
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 80,
     head: [['Ingrediente', 'Stock Actual', 'Cantidad a Comprar', 'Costo Unit.', 'Total Est.']],
     body: tableRows,
@@ -76,7 +76,7 @@ export const generatePurchaseOrderPDF = (forecastData, totalCost) => {
   })
 
   // Resumen Final
-  const finalY = doc.lastAutoTable.finalY + 15
+  const finalY = (doc.lastAutoTable?.finalY || 150) + 15
   
   doc.setFillColor(248, 250, 252)
   doc.rect(130, finalY, 65, 25, 'F')

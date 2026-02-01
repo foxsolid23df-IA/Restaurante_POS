@@ -7,8 +7,13 @@ import { clsx } from 'clsx'
 import { 
   X,
   Save,
-  Plus
+  Plus,
+  Edit2,
+  Trash2,
+  Edit,
+  Trash
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function SalonLayout() {
   const { profile } = useAuthStore()
@@ -35,6 +40,7 @@ export default function SalonLayout() {
   const [editingTable, setEditingTable] = useState(null)
   const [viewMode, setViewMode] = useState('editor') // 'editor' | 'preview'
   const [zoomLevel, setZoomLevel] = useState(1)
+  const [confirmDelete, setConfirmDelete] = useState({ type: null, id: null, title: '' }) // { type: 'table' | 'area', id: string, title: string }
   
   // Drag & Drop State
   const [localTables, setLocalTables] = useState([])
@@ -181,10 +187,51 @@ export default function SalonLayout() {
       setShowAreaModal(false)
       setEditingArea(null)
       setAreaForm({ name: '', description: '', color: '#064e3b' })
-      // No need to call fetchAreas() manually as hook updates state
+      toast.success(editingArea ? 'Área actualizada' : 'Área creada')
     } catch (error) {
       console.error('Error saving area:', error)
-      alert('Error inesperado al guardar el área')
+      toast.error('Error al guardar el área')
+    }
+  }
+
+  const handleDeleteArea = async (id) => {
+    const area = areas.find(a => a.id === id)
+    const tablesInArea = allTables.filter(t => t.area_id === id).length
+    
+    if (tablesInArea > 0) {
+      toast.error(`No se puede eliminar el área "${area?.name}" porque tiene ${tablesInArea} mesas asignadas.`)
+      return
+    }
+
+    setConfirmDelete({
+      type: 'area',
+      id: id,
+      title: `ELIMINAR ÁREA: ${area?.name}`
+    })
+  }
+
+  const executeDelete = async () => {
+    if (!confirmDelete.id) return
+
+    try {
+      if (confirmDelete.type === 'table') {
+        const { success, error } = await deleteTable(confirmDelete.id)
+        if (error) throw new Error(error)
+        toast.success('Mesa eliminada')
+        setEditingTable(null)
+        setShowTableModal(false)
+      } else {
+        const { success, error } = await deleteArea(confirmDelete.id)
+        if (error) throw new Error(error)
+        toast.success('Área eliminada')
+        if (activeAreaId === confirmDelete.id) {
+          setActiveAreaId(areas.find(a => a.id !== confirmDelete.id)?.id || null)
+        }
+      }
+    } catch (error) {
+      toast.error(error.message || 'Error al eliminar')
+    } finally {
+      setConfirmDelete({ type: null, id: null, title: '' })
     }
   }
 
@@ -244,32 +291,58 @@ export default function SalonLayout() {
             <h3 className="text-[10px] uppercase tracking-[0.3em] text-slate-500 font-black mb-10 pl-1">ÁREAS DE SERVICIO</h3>
             <nav className="space-y-4">
               {areas.length > 0 ? areas.map(area => (
-                <button 
-                  key={area.id}
-                  onClick={() => setActiveAreaId(area.id)}
-                  className={clsx(
-                    "w-full flex items-center justify-between p-5 px-6 rounded-[1.75rem] transition-all group",
-                    activeAreaId === area.id 
-                      ? "bg-primary text-white shadow-[0_20px_40px_-10px_rgba(6,78,59,0.5)] scale-[1.03] ring-1 ring-emerald-400/20" 
-                      : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
-                  )}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className={clsx(
-                        "material-symbols-outlined text-[20px] transition-colors",
-                        activeAreaId === area.id ? "text-emerald-300" : "group-hover:text-primary"
-                    )}>
-                      {area.name.toLowerCase().includes('bar') ? 'wine_bar' : area.name.toLowerCase().includes('terraza') ? 'deck' : 'grid_view'}
-                    </span>
-                    <span className="font-bold tracking-tight text-sm truncate max-w-[140px] uppercase">{area.name}</span>
+                <div key={area.id} className="relative group">
+                  <button 
+                    onClick={() => setActiveAreaId(area.id)}
+                    className={clsx(
+                      "w-full flex items-center justify-between p-5 px-6 rounded-[1.75rem] transition-all",
+                      activeAreaId === area.id 
+                        ? "bg-primary text-white shadow-[0_20px_40px_-10px_rgba(6,78,59,0.5)] scale-[1.03] ring-1 ring-emerald-400/20" 
+                        : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className={clsx(
+                          "material-symbols-outlined text-[20px] transition-colors",
+                          activeAreaId === area.id ? "text-emerald-300" : "group-hover:text-primary"
+                      )}>
+                        {area.name.toLowerCase().includes('bar') ? 'wine_bar' : area.name.toLowerCase().includes('terraza') ? 'deck' : 'grid_view'}
+                      </span>
+                      <span className="font-bold tracking-tight text-sm truncate max-w-[140px] uppercase">{area.name}</span>
+                    </div>
+                    {activeAreaId !== area.id && (
+                      <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-slate-800 group-hover:hidden">
+                        {allTables.filter(t => t.area_id === area.id).length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Sidebar Hover Actions */}
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setAreaForm({ name: area.name, description: area.description || '', color: area.color || '#064e3b' })
+                        setEditingArea(area)
+                        setShowAreaModal(true)
+                      }}
+                      className="p-2.5 bg-slate-900/80 hover:bg-blue-600 text-white rounded-xl shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+                      title="Editar nombre"
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteArea(area.id)
+                      }}
+                      className="p-2.5 bg-slate-900/80 hover:bg-rose-600 text-white rounded-xl shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+                      title="Eliminar área"
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
-                  <span className={clsx(
-                      "text-[10px] font-black px-2.5 py-1 rounded-lg",
-                      activeAreaId === area.id ? "bg-white/20" : "bg-slate-800 group-hover:bg-slate-700"
-                  )}>
-                    {allTables.filter(t => t.area_id === area.id).length}
-                  </span>
-                </button>
+                </div>
               )) : (
                 <div className="p-6 text-center border-2 border-dashed border-slate-800 rounded-[2rem]">
                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sin áreas configuradas</p>
@@ -421,11 +494,11 @@ export default function SalonLayout() {
                           </div>
                           <button 
                             onClick={() => {
-                              if (confirm('¿Eliminar mesa?')) {
-                                deleteTable(editingTable.id)
-                                setShowTableModal(false)
-                                setEditingTable(null)
-                              }
+                              setConfirmDelete({
+                                type: 'table',
+                                id: editingTable.id,
+                                title: `ELIMINAR MESA ${editingTable.name}`
+                              })
                             }}
                             className="p-2 text-slate-500 hover:text-rose-500 transition-colors bg-black/20 rounded-xl"
                           >
@@ -750,6 +823,36 @@ export default function SalonLayout() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Action Confirmation Modal */}
+      {confirmDelete.id && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl flex items-center justify-center z-[300] p-6 animate-in fade-in duration-500">
+           <div className="bg-[#1e293b] rounded-[3.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-700 p-12 text-center">
+              <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-8 text-rose-500">
+                 <Trash2 size={48} />
+              </div>
+              <h3 className="text-2xl font-display font-bold text-white mb-3 uppercase tracking-tight">{confirmDelete.title}</h3>
+              <p className="text-slate-400 text-sm font-medium mb-10 leading-relaxed">
+                Esta acción es permanente y no se puede deshacer. ¿Estás absolutamente seguro de que deseas continuar?
+              </p>
+              
+              <div className="flex flex-col gap-4">
+                 <button 
+                   onClick={executeDelete}
+                   className="w-full py-6 bg-rose-600 text-white rounded-[1.75rem] font-black text-xs uppercase tracking-widest hover:bg-rose-700 transition-all shadow-2xl shadow-rose-900/20"
+                 >
+                   SÍ, ELIMINAR AHORA
+                 </button>
+                 <button 
+                   onClick={() => setConfirmDelete({ type: null, id: null, title: '' })}
+                   className="w-full py-6 font-black text-xs uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
+                 >
+                   CANCELAR
+                 </button>
+              </div>
+           </div>
         </div>
       )}
     </div>

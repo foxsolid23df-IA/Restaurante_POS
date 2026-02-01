@@ -33,34 +33,72 @@ export const getCategoryPrinterDestination = (categoryName) => {
   return PRINTER_DESTINATIONS.KITCHEN
 }
 
-export const updateCategoryPrinterDestinations = async (supabase) => {
+export const updateCategoryPrinterDestinations = async (supabase, branchId) => {
+  if (!branchId) {
+    console.error('No se puede auto-configurar sin branchId')
+    return
+  }
+
   try {
-    // Obtener todas las categorías sin printer_destination
-    const { data: categories, error } = await supabase
-      .from('categories')
-      .select('id, name, printer_destination')
-      .is('printer_destination', null)
+    // 1. Obtener todas las categorías y todas las impresoras de la sucursal
+    const [categoriesRes, printersRes] = await Promise.all([
+      supabase.from('categories').select('id, name, printer_id'),
+      supabase.from('printers').select('id, name').eq('branch_id', branchId)
+    ])
     
-    if (error) throw error
+    if (categoriesRes.error) throw categoriesRes.error
+    if (printersRes.error) throw printersRes.error
     
-    if (categories && categories.length > 0) {
-      // Actualizar cada categoría con su destino correspondiente
-      const updates = categories.map(category => ({
-        id: category.id,
-        printer_destination: getCategoryPrinterDestination(category.name)
-      }))
+    const categories = categoriesRes.data || []
+    const printers = printersRes.data || []
+
+    if (printers.length === 0) {
+      console.warn('No hay impresoras configuradas para esta sucursal')
+      return { error: 'No hay impresoras configuradas. Cree primero las zonas de producción en Configuración.' }
+    }
+
+    // 2. Identificar impresoras por palabras clave
+    const findPrinter = (keywords) => {
+      return printers.find(p => 
+        keywords.some(kw => p.name.toLowerCase().includes(kw))
+      )
+    }
+
+    const printerMap = {
+      [PRINTER_DESTINATIONS.BAR]: findPrinter(['bar', 'bebida', 'copa']),
+      [PRINTER_DESTINATIONS.SUSHI_BAR]: findPrinter(['sushi', 'barra']),
+      [PRINTER_DESTINATIONS.GRILL]: findPrinter(['parrilla', 'grill', 'asador']),
+      [PRINTER_DESTINATIONS.KITCHEN]: findPrinter(['cocina', 'caliente', 'produccion']) || printers[0] // Default a la primera
+    }
+
+    // 3. Preparar actualizaciones
+    const updates = []
+    for (const cat of categories) {
+      const suggestedArea = getCategoryPrinterDestination(cat.name)
+      const targetPrinter = printerMap[suggestedArea]
       
-      // Ejecutar actualizaciones en batch
+      if (targetPrinter && cat.printer_id !== targetPrinter.id) {
+        updates.push({
+          id: cat.id,
+          printer_id: targetPrinter.id
+        })
+      }
+    }
+
+    // 4. Ejecutar actualizaciones
+    if (updates.length > 0) {
       for (const update of updates) {
         await supabase
           .from('categories')
-          .update({ printer_destination: update.printer_destination })
+          .update({ printer_id: update.printer_id })
           .eq('id', update.id)
       }
-      
-      console.log(`Actualizadas ${updates.length} categorías con printer_destination`)
+      return { success: true, count: updates.length }
     }
+
+    return { success: true, count: 0 }
   } catch (error) {
-    console.error('Error actualizando printer_destinations:', error)
+    console.error('Error auto-configurando categorías:', error)
+    return { error: error.message }
   }
 }
