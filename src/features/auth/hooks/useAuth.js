@@ -5,11 +5,9 @@ import { useCallback } from 'react'
 
 export const useAuth = () => {
     const queryClient = useQueryClient()
-    const { setProfile, setUser, setLoading } = useAuthStore(state => ({
-        setProfile: (profile) => state.updateProfile(profile),
-        setUser: (user) => state.user = user, // Using zustand directly
-        setLoading: (loading) => state.loading = loading
-    }))
+    const setProfile = useAuthStore(state => state.updateProfile)
+    const setUser = (user) => useAuthStore.setState({ user })
+    const setLoading = (loading) => useAuthStore.setState({ loading })
 
     const loginMutation = useMutation({
         mutationFn: ({ email, password }) => authApi.signInWithPassword(email, password),

@@ -47,8 +47,16 @@ function POSContent() {
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerList, setShowCustomerList] = useState(false)
 
+  // Sincronizar mesa seleccionada inicial desde el carrito
   useEffect(() => {
-    if (selectedTable && cart && cart.table_id !== selectedTable) {
+    if (cart?.table_id && !selectedTable) {
+      setSelectedTable(cart.table_id)
+    }
+  }, [cart?.table_id, selectedTable])
+
+  // Sincronizar carrito desde mesa seleccionada
+  useEffect(() => {
+    if (selectedTable && cart && String(cart.table_id) !== String(selectedTable)) {
       setTable(cart.id, selectedTable)
     }
   }, [selectedTable, cart?.id, cart?.table_id, setTable])

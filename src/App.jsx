@@ -51,6 +51,7 @@ function ProtectedRoute({ allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(profile?.role)) {
+    if (window.location.pathname === '/pos' || window.location.pathname === '/pos/') return null;
     return <Navigate to="/pos" replace />
   }
 
