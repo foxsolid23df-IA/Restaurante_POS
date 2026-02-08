@@ -1,111 +1,54 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { Suspense, useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import { useCart } from '@/hooks/useCart'
 import { useOrders } from '@/hooks/useOrders'
 import { useTables } from '@/hooks/useTables'
 import { useCustomers } from '@/hooks/useCustomers'
-import { useInventoryIntegration } from '@/hooks/useInventoryIntegration'
 import { useComandaPrinter } from '@/hooks/useComandaPrinter'
-import { Clock, TrendingUp, Users, ShoppingCart, UserCircle, ChevronDown, Check } from 'lucide-react'
+import { Clock, TrendingUp, Users, ShoppingCart, UserCircle, ChevronDown, Check, Search } from 'lucide-react'
 import PaymentModal from './components/PaymentModal'
 import InventoryAlerts from './components/InventoryAlerts'
 import CategoryFilter from '@/components/POS/CategoryFilter'
 import ProductGrid from '@/components/POS/ProductGrid'
 import POSCart from '@/components/POS/POSCart'
+import { usePOSData } from '@/features/pos/hooks/usePOSData'
 import { toast } from 'sonner'
 
-export default function POS() {
+function POSContent() {
   const { profile } = useAuthStore()
   const { settings } = useBusinessStore()
+  const { categories, products, tables: dbTables } = usePOSData()
   
-  // Estados
-  const [categories, setCategories] = useState([])
-  const [products, setProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [loading, setLoading] = useState(true)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', email: '' })
-  const [orderNotes, setOrderNotes] = useState('')
-
-  // Hooks personalizados
+  
   const { 
     cart, addToCart, removeFromCart, updateQuantity, clearCurrentCart,
-    totals, isEmpty, setTable, setCustomerInfo: setCartCustomerInfo 
+    totals, isEmpty, setTable 
   } = useCart()
   
   const { 
-    createOrderFromCart, loading: orderLoading, error: orderError, metrics: orderMetrics 
+    createOrderFromCart, loading: orderLoading, metrics: orderMetrics 
   } = useOrders()
   
   const { 
-    tables, occupyTable, selectedTable, setSelectedTable, metrics: tableMetrics 
+    tables, selectedTable, setSelectedTable, metrics: tableMetrics 
   } = useTables()
 
-  const { customers, loading: customersLoading } = useCustomers()
-  const { processOrderComanda, printTicket, loading: printingLoading } = useComandaPrinter()
+  const { customers } = useCustomers()
+  const { processOrderComanda, printingLoading } = useComandaPrinter()
   
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerList, setShowCustomerList] = useState(false)
 
   useEffect(() => {
-    loadInitialData()
-  }, [])
-
-  useEffect(() => {
     if (selectedTable && cart) {
       setTable(cart.id, selectedTable)
     }
   }, [selectedTable, cart, setTable])
-
-  const isMenuSectionActive = (menu) => {
-    if (!menu) return true
-    if (!menu.is_active) return false
-
-    const now = new Date()
-    const currentDay = now.getDay()
-    const currentTimeStr = now.toTimeString().split(' ')[0]
-    
-    // Check days
-    if (menu.active_days && !menu.active_days.includes(currentDay)) return false
-
-    // Check time
-    if (menu.start_time && menu.end_time) {
-      if (menu.start_time < menu.end_time) {
-        return currentTimeStr >= menu.start_time && currentTimeStr <= menu.end_time
-      } else {
-        // Crosses midnight
-        return currentTimeStr >= menu.start_time || currentTimeStr <= menu.end_time
-      }
-    }
-    return true
-  }
-
-  const loadInitialData = async () => {
-    try {
-      const [categoriesRes, productsRes] = await Promise.all([
-        supabase.from('categories').select('*, menus(*)').order('name'),
-        supabase.from('products').select('*').eq('is_active', true).order('name')
-      ])
-      
-      if (categoriesRes.error) throw categoriesRes.error
-      if (productsRes.error) throw productsRes.error
-
-      // Filter categories based on menu schedules
-      const activeCategories = (categoriesRes.data || []).filter(cat => isMenuSectionActive(cat.menus))
-      
-      setCategories(activeCategories)
-      setProducts(productsRes.data || [])
-    } catch (error) {
-      console.error('Error loading data:', error)
-      toast.error('Error cargando datos del POS')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAddToCart = (product) => {
     addToCart({
@@ -139,42 +82,22 @@ export default function POS() {
       const orderData = {
         table_id: selectedTable.id || selectedTable,
         customer_id: selectedCustomer?.id,
-        customer_info: selectedCustomer 
-          ? { name: selectedCustomer.name, phone: selectedCustomer.phone, email: selectedCustomer.email }
-          : (customerInfo.name ? customerInfo : undefined),
-        notes: orderNotes
+        notes: ''
       }
 
       const result = await createOrderFromCart(orderData, profile.id)
       if (result.error) throw new Error(result.error)
 
-      // Imprimir Comanda automáticamente
       if (result.order?.id) {
         processOrderComanda(result.order.id)
       }
 
-      await occupyTable(selectedTable.id || selectedTable)
-
-      toast.success(selectedCustomer 
-        ? `¡Orden exitosa! +${Math.floor(totals.total / 10)} puntos`
-        : '¡Orden creada exitosamente!', { duration: 3000 }
-      )
-      
+      toast.success('¡Orden creada exitosamente!')
       clearCurrentCart()
       setSelectedTable(null)
       setSelectedCustomer(null)
-      setCustomerInfo({ name: '', phone: '', email: '' })
-      setOrderNotes('')
-      setShowPaymentModal(false)
     } catch (error) {
       toast.error(error.message)
-    }
-  }
-
-  const handlePrintPreCheck = () => {
-    if (cart?.id) {
-      // TODO: Implementar pre-cuenta real con el bridge
-      toast.info('Imprimiendo pre-cuenta...')
     }
   }
 
@@ -189,93 +112,101 @@ export default function POS() {
   )
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-[#f8fafc] font-sans overflow-hidden">
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Header & Filter Section */}
-        <div className="bg-white border-b border-slate-200">
-           <CategoryFilter 
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-           />
-           
-           {/* Metrics Row (Inline for now, style fixed) */}
-           <div className="px-6 pb-2 pt-2 grid grid-cols-4 gap-4">
-              <MetricCard icon={<Clock />} label="Órdenes Hoy" value={orderMetrics?.totalToday || 0} variant="primary" />
-              <MetricCard icon={<TrendingUp />} label="Ventas Hoy" value={`$${(orderMetrics?.revenueToday || 0).toFixed(2)}`} variant="success" />
-              <MetricCard icon={<Users />} label="Ocupación" value={`${tableMetrics?.occupied || 0}/${tableMetrics?.total || 0}`} variant="warning" />
-              <MetricCard icon={<ShoppingCart />} label="Items" value={totals.itemsCount} variant="dark" />
+        {/* Header Section */}
+        <div className="bg-white border-b border-slate-100 p-6 space-y-6">
+           <div className="flex items-center justify-between gap-6">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-secondary transition-colors" size={20} strokeWidth={2.5} />
+                <input 
+                  type="text"
+                  placeholder="Buscar platillo o bebida..."
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-secondary/5 focus:border-secondary outline-none transition-all font-black"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <MetricCard icon={<Clock size={16} strokeWidth={2.5} />} label="Órdenes" value={orderMetrics?.totalToday || 0} color="secondary" />
+                <MetricCard icon={<TrendingUp size={16} strokeWidth={2.5} />} label="Ventas" value={`$${(orderMetrics?.revenueToday || 0).toFixed(0)}`} color="success" />
+                <MetricCard icon={<Users size={16} strokeWidth={2.5} />} label="Mesas" value={`${tableMetrics?.occupied || 0}/${tableMetrics?.total || 0}`} color="warning" />
+              </div>
            </div>
+           
+           <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <CategoryFilter 
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
+                />
+              </div>
+              
+              <div className="flex items-center gap-3 border-l border-slate-100 pl-4">
+                <select
+                  value={selectedTable?.id || selectedTable || ''}
+                  onChange={(e) => setSelectedTable(e.target.value)}
+                  className="px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-secondary outline-none font-black text-xs uppercase tracking-widest transition-all min-w-[180px] cursor-pointer"
+                >
+                  <option value="">Seleccionar Mesa</option>
+                  {tables.filter(t => t.status === 'available' || t.id === selectedTable).map(table => (
+                    <option key={table.id} value={table.id}>{table.name}</option>
+                  ))}
+                </select>
 
-           {/* Table & Customer Selection */}
-           <div className="grid grid-cols-2 gap-4 px-6 pb-4">
-             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Mesa Actual</label>
-              <select
-                value={selectedTable?.id || selectedTable || ''}
-                onChange={(e) => setSelectedTable(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-medium transition-all"
-              >
-                <option value="">-- Seleccionar Mesa --</option>
-                {tables.filter(t => t.status === 'available' || t.id === selectedTable).map(table => (
-                  <option key={table.id} value={table.id}>{table.name} ({table.capacity}p)</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="relative">
-               <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cliente / Lealtad</label>
-               <button 
-                onClick={() => setShowCustomerList(!showCustomerList)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between hover:border-primary/50 transition-colors"
-               >
-                 <div className="flex items-center gap-2">
-                   <UserCircle className={selectedCustomer ? "text-primary" : "text-gray-400"} size={20} />
-                   <span className="font-medium">{selectedCustomer ? selectedCustomer.name : "Venta General"}</span>
-                 </div>
-                 <ChevronDown size={16} className="text-gray-400" />
-               </button>
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowCustomerList(!showCustomerList)}
+                    className="px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2 hover:bg-white transition-all font-black text-xs uppercase tracking-widest min-w-[200px]"
+                  >
+                    <UserCircle size={18} className={selectedCustomer ? "text-secondary" : "text-slate-300"} strokeWidth={2.5} />
+                    <span className="truncate">{selectedCustomer ? selectedCustomer.name : "Venta General"}</span>
+                    <ChevronDown size={14} className="ml-auto opacity-50" strokeWidth={3} />
+                  </button>
 
-               {showCustomerList && (
-                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                   <div className="p-3 border-b border-gray-50">
-                     <input 
-                      type="text" 
-                      placeholder="Buscar cliente..." 
-                      className="w-full px-3 py-2 bg-gray-50 rounded-lg text-sm border-none focus:ring-1 focus:ring-primary"
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                      autoFocus
-                     />
-                   </div>
-                   <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                     <button 
-                      onClick={() => { setSelectedCustomer(null); setShowCustomerList(false); }}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors flex justify-between items-center"
-                     >
-                       <span>Venta General</span>
-                       {!selectedCustomer && <Check size={14} className="text-primary" />}
-                     </button>
-                     {filteredCustomers.map(c => (
-                       <button 
-                        key={c.id}
-                        onClick={() => { setSelectedCustomer(c); setShowCustomerList(false); }}
-                        className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-t border-gray-50"
-                       >
-                         <div className="font-bold text-slate-800">{c.name}</div>
-                         <div className="text-[10px] text-gray-500">{c.phone || c.email} • <span className="text-primary font-bold">{c.loyalty_points} pts</span></div>
-                       </button>
-                     ))}
-                   </div>
-                 </div>
-               )}
-            </div>
-          </div>
+                  {showCustomerList && (
+                    <div className="absolute top-full right-0 mt-3 w-72 glass rounded-2xl shadow-2xl z-50 overflow-hidden border border-white/20 animate-in fade-in slide-in-from-top-2">
+                       <div className="p-3 bg-white/50">
+                        <input 
+                          type="text" 
+                          placeholder="Buscar cliente..." 
+                          className="w-full px-3 py-2 bg-white rounded-xl text-xs font-black border-none focus:ring-2 focus:ring-secondary/20"
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-64 overflow-y-auto custom-scrollbar bg-white/30 backdrop-blur-md">
+                        <button 
+                          onClick={() => { setSelectedCustomer(null); setShowCustomerList(false); }}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-white/50 transition-colors flex justify-between items-center"
+                        >
+                          <span className="font-black text-primary uppercase text-[10px] tracking-widest">Venta General</span>
+                          {!selectedCustomer && <Check size={14} className="text-secondary" strokeWidth={3} />}
+                        </button>
+                        {filteredCustomers.map(c => (
+                          <button 
+                            key={c.id}
+                            onClick={() => { setSelectedCustomer(c); setShowCustomerList(false); }}
+                            className="w-full text-left px-4 py-4 hover:bg-white/50 transition-colors border-t border-white/10"
+                          >
+                            <div className="font-black text-primary text-xs uppercase tracking-tight">{c.name}</div>
+                            <div className="text-[9px] font-black text-slate-400 mt-0.5 uppercase tracking-tighter">
+                              {c.phone || c.email} • <span className="text-secondary">{c.loyalty_points} pts</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+           </div>
         </div>
 
-        {/* Product Grid */}
+        {/* Product Grid Container */}
         <ProductGrid 
           products={filteredProducts} 
           onAddToCart={handleAddToCart}
@@ -290,7 +221,6 @@ export default function POS() {
         onRemove={removeFromCart}
         onUpdateQuantity={handleUpdateQuantity}
         onCheckout={handleCreateOrder}
-        onPrintPreCheck={handlePrintPreCheck}
         loading={orderLoading}
         printingLoading={printingLoading}
         selectedTable={selectedTable}
@@ -302,20 +232,38 @@ export default function POS() {
   )
 }
 
-function MetricCard({ icon, label, value, variant }) {
-  const variants = {
-    primary: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    success: "bg-teal-50 text-teal-700 border-teal-100",
-    warning: "bg-amber-50 text-amber-700 border-amber-100",
-    dark: "bg-slate-50 text-slate-700 border-slate-200"
+function MetricCard({ icon, label, value, color }) {
+  const colors = {
+    secondary: "text-secondary bg-blue-50/50 border-blue-100",
+    success: "text-success bg-emerald-50/50 border-emerald-100",
+    warning: "text-warning bg-amber-50/50 border-amber-100",
   }
   
   return (
-    <div className={`${variants[variant] || variants.dark} p-3 rounded-xl border shadow-sm flex flex-col justify-center`}>
-      <div className="flex items-center gap-2 mb-1 text-[10px] font-bold uppercase opacity-70 tracking-wider">
-        {icon} {label}
+    <div className={`px-4 py-2 rounded-2xl border ${colors[color]} flex items-center gap-3 shadow-sm transition-all hover:shadow-md cursor-default`}>
+      <div className="p-2 bg-white rounded-lg shadow-sm">
+        {icon}
       </div>
-      <div className="text-xl font-black tracking-tight">{value}</div>
+      <div>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className="text-sm font-black text-primary leading-none tracking-tight font-display">{value}</p>
+      </div>
     </div>
   )
 }
+
+export default function POS() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen w-full flex items-center justify-center bg-[#f8fafc]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary/10 border-t-secondary" />
+          <p className="font-black text-slate-300 animate-pulse uppercase tracking-[0.2em] text-[10px]">Iniciando Terminal...</p>
+        </div>
+      </div>
+    }>
+      <POSContent />
+    </Suspense>
+  )
+}
+

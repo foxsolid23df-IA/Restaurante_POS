@@ -3,28 +3,51 @@
 @tailwind utilities;
 
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  --primary: #064e3b;
-  --accent: #10b981;
+  font-family: "Inter", "Outfit", system-ui, sans-serif;
+  --primary: #0f172a; /* Midnight Navy */
+  --secondary: #2563eb; /* Electric Blue */
+  --accent: #06b6d4; /* Cyan */
+  --success: #10b981; /* Emerald */
+  --warning: #f59e0b; /* Amber */
+  --background: #f8fafc;
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+  }
+
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  .premium-card {
+    @apply bg-white rounded-3xl shadow-[0_20px_50px_rgba(8,_112,_184,_0.05)] border border-slate-100/50 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] hover:-translate-y-1;
+  }
+
+  .premium-button {
+    @apply px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-lg hover:shadow-xl;
+  }
 }
 
 /* Architect View Backgrounds */
 .canvas-grid {
-    background-size: 40px 40px;
-    background-image: radial-gradient(circle, #334155 1px, transparent 1px);
-    background-color: #0f172a;
+  background-size: 40px 40px;
+  background-image: radial-gradient(circle, #334155 1px, transparent 1px);
+  background-color: #0f172a;
 }
 
 .table-shape {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background-color: #1e293b;
-    border-color: #334155;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #1e293b;
+  border-color: #334155;
+  @apply rounded-xl;
 }
 
 .table-shape:hover {
-    transform: scale(1.02);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-    border-color: var(--accent);
+  transform: scale(1.02);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  border-color: var(--primary);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -36,15 +59,14 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #3b82f644;
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+  background: var(--primary);
 }
 
-/* Force dark theme for the main container in the screenshot */
 .architect-container {
   background-color: #0f172a;
   color: #f8fafc;

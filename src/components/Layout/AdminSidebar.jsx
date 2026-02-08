@@ -35,21 +35,24 @@ export default function AdminSidebar() {
   const { profile, signOut } = useAuthStore()
 
   return (
-    <aside className="w-72 bg-slate-950 text-white min-h-screen flex flex-col shadow-2xl z-50 font-sans">
+    <aside className="w-72 bg-primary text-white min-h-screen flex flex-col shadow-2xl z-50 font-sans border-r border-white/5">
       <div className="p-8 border-b border-white/5">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center font-display font-bold text-xl shadow-lg shadow-emerald-500/10">
+          <div className="w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center font-display font-bold text-xl shadow-lg shadow-blue-500/10">
             M
           </div>
-          <h1 className="text-xl font-display font-bold tracking-tight">Manager Hub<span className="text-accent">.</span></h1>
+          <h1 className="text-xl font-display font-black tracking-tight uppercase">Manager Hub<span className="text-accent">.</span></h1>
         </div>
         
-        <div className="bg-white/5 p-4 rounded-3xl border border-white/5">
-           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Usuario Activo</p>
-           <p className="text-sm font-bold text-white truncate">{profile?.full_name || 'Administrador'}</p>
-           <span className="inline-block mt-2 px-3 py-1 bg-accent/20 text-accent text-[10px] font-black rounded-full uppercase tracking-tighter">
-             {profile?.role || 'ADMIN'}
-           </span>
+        <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 backdrop-blur-sm">
+           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Operador</p>
+           <p className="text-sm font-black text-white truncate">{profile?.full_name || 'Administrador'}</p>
+           <div className="flex items-center gap-2 mt-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              <span className="text-[9px] font-black text-accent uppercase tracking-widest">
+                {profile?.role || 'ADMIN'}
+              </span>
+           </div>
         </div>
       </div>
 
@@ -72,14 +75,14 @@ export default function AdminSidebar() {
               className={clsx(
                 'flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 font-bold group relative',
                 isActive 
-                  ? 'bg-primary text-white shadow-xl shadow-emerald-900/40 translate-x-1' 
+                  ? 'bg-secondary text-white shadow-xl shadow-blue-900/40 translate-x-1' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               )}
             >
-              <Icon size={22} className={clsx(isActive ? 'text-emerald-300' : 'text-slate-500 group-hover:text-white')} />
-              <span className="text-sm">{item.label}</span>
+              <Icon size={20} className={clsx(isActive ? 'text-white' : 'text-slate-500 group-hover:text-white')} strokeWidth={2.5} />
+              <span className="text-sm font-black tracking-tight">{item.label}</span>
               {isActive && (
-                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-white/50" />
               )}
             </Link>
           )
@@ -91,15 +94,15 @@ export default function AdminSidebar() {
           to="/"
           className="flex items-center gap-4 px-6 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-white/5 transition-all font-bold text-sm"
         >
-          <Receipt size={20} />
-          <span>Ir a POS</span>
+          <Receipt size={18} strokeWidth={2.5} />
+          <span className="font-black text-[11px] uppercase tracking-widest">Panel de Servicio</span>
         </Link>
         <button
           onClick={signOut}
-          className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-red-400 hover:text-white hover:bg-red-600 transition-all font-bold text-sm shadow-sm"
+          className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-red-400 hover:text-white hover:bg-red-600 transition-all font-bold text-sm"
         >
-           <LogOut size={20} />
-          <span>Cerrar Sesión</span>
+           <LogOut size={18} strokeWidth={2.5} />
+          <span className="font-black text-[11px] uppercase tracking-widest">Cerrar Sesión</span>
         </button>
       </div>
      </aside>
