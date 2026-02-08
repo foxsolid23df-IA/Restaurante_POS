@@ -1,4 +1,5 @@
 import { Suspense, useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import { useCart } from '@/hooks/useCart'
@@ -16,9 +17,10 @@ import { usePOSData } from '@/features/pos/hooks/usePOSData'
 import { toast } from 'sonner'
 
 function POSContent() {
+  const location = useLocation()
   const { profile } = useAuthStore()
   const { settings } = useBusinessStore()
-  const { categories, products, tables: dbTables } = usePOSData()
+  const { categories, products } = usePOSData()
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -34,12 +36,13 @@ function POSContent() {
   } = useOrders()
   
   const { 
-    tables, selectedTable, setSelectedTable, metrics: tableMetrics 
+    tables, metrics: tableMetrics 
   } = useTables()
 
   const { customers } = useCustomers()
   const { processOrderComanda, printingLoading } = useComandaPrinter()
   
+  const [selectedTable, setSelectedTable] = useState(location.state?.table?.id || null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerList, setShowCustomerList] = useState(false)
@@ -111,6 +114,8 @@ function POSContent() {
     c.phone?.includes(customerSearch)
   )
 
+  const fullSelectedTable = tables.find(t => t.id === selectedTable)
+
   return (
     <div className="flex h-screen bg-[#f8fafc] font-sans overflow-hidden">
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -146,8 +151,8 @@ function POSContent() {
               
               <div className="flex items-center gap-3 border-l border-slate-100 pl-4">
                 <select
-                  value={selectedTable?.id || selectedTable || ''}
-                  onChange={(e) => setSelectedTable(e.target.value)}
+                  value={selectedTable || ''}
+                  onChange={(e) => setSelectedTable(e.target.value || null)}
                   className="px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-secondary outline-none font-black text-xs uppercase tracking-widest transition-all min-w-[180px] cursor-pointer"
                 >
                   <option value="">Seleccionar Mesa</option>
@@ -223,7 +228,7 @@ function POSContent() {
         onCheckout={handleCreateOrder}
         loading={orderLoading}
         printingLoading={printingLoading}
-        selectedTable={selectedTable}
+        selectedTable={fullSelectedTable || selectedTable}
         taxName={settings?.tax_name}
       />
       
