@@ -1,19 +1,27 @@
-import { useRolePermissions } from '@/hooks/useRolePermissions'
+import {
+  ShoppingCart,
+  Trash2,
+  Minus,
+  Plus,
+  Printer,
+  DollarSign,
+} from "lucide-react";
+import { useRolePermissions } from "@/hooks/useRolePermissions";
 
-export default function POSCart({ 
-  cart, 
-  totals, 
-  isEmpty, 
-  onRemove, 
-  onUpdateQuantity, 
-  onCheckout, 
-  onPrintPreCheck, 
-  loading, 
+export default function POSCart({
+  cart,
+  totals,
+  isEmpty,
+  onRemove,
+  onUpdateQuantity,
+  onCheckout,
+  onPrintPreCheck,
+  loading,
   printingLoading,
   selectedTable, // Needed to disable checkout if no table selected
-  taxName = 'IVA'
+  taxName = "IVA",
 }) {
-  const { canCheckout } = useRolePermissions()
+  const { canCheckout } = useRolePermissions();
 
   return (
     <div className="w-96 bg-white border-l border-slate-200 flex flex-col shadow-2xl z-10 transition-all duration-300">
@@ -32,16 +40,25 @@ export default function POSCart({
             <div className="bg-slate-50 p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
               <ShoppingCart size={32} className="text-slate-300" />
             </div>
-            <p className="text-slate-400 font-medium tracking-tight">El carrito está vacío</p>
-            <p className="text-xs text-slate-300 mt-2">Agrega productos del menú</p>
+            <p className="text-slate-400 font-medium tracking-tight">
+              El carrito está vacío
+            </p>
+            <p className="text-xs text-slate-300 mt-2">
+              Agrega productos del menú
+            </p>
           </div>
         ) : (
-          cart.items.map(item => (
-            <div key={item.id} className="bg-slate-50/80 rounded-2xl p-4 border border-transparent hover:border-slate-200 transition-all group hover:bg-white hover:shadow-sm">
+          cart.items.map((item) => (
+            <div
+              key={item.id}
+              className="bg-slate-50/80 rounded-2xl p-4 border border-transparent hover:border-slate-200 transition-all group hover:bg-white hover:shadow-sm"
+            >
               <div className="flex justify-between items-start mb-3">
-                <h3 className="font-bold text-slate-800 leading-tight pr-2">{item.name}</h3>
-                <button 
-                  onClick={() => onRemove(item.id)} 
+                <h3 className="font-bold text-slate-800 leading-tight pr-2">
+                  {item.name}
+                </h3>
+                <button
+                  onClick={() => onRemove(item.id)}
                   className="text-slate-300 hover:text-red-500 transition-colors p-1 hover:bg-red-50 rounded"
                 >
                   <Trash2 size={16} />
@@ -49,21 +66,25 @@ export default function POSCart({
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-                  <button 
-                    onClick={() => onUpdateQuantity(item.id, -1)} 
+                  <button
+                    onClick={() => onUpdateQuantity(item.id, -1)}
                     className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 active:scale-95 transition-transform"
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="font-bold w-6 text-center text-sm text-slate-700">{item.quantity}</span>
-                  <button 
-                    onClick={() => onUpdateQuantity(item.id, 1)} 
+                  <span className="font-bold w-6 text-center text-sm text-slate-700">
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => onUpdateQuantity(item.id, 1)}
                     className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500 active:scale-95 transition-transform"
                   >
                     <Plus size={14} />
                   </button>
                 </div>
-                <p className="font-black text-primary">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="font-black text-primary">
+                  ${(item.price * item.quantity).toFixed(2)}
+                </p>
               </div>
             </div>
           ))
@@ -77,7 +98,9 @@ export default function POSCart({
             <span>${totals.subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-slate-500 font-medium text-sm">
-            <span>{taxName} ({(totals.taxRate * 100).toFixed(0)}%)</span>
+            <span>
+              {taxName} ({(totals.taxRate * 100).toFixed(0)}%)
+            </span>
             <span>${totals.tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-2xl font-black text-slate-900 pt-3 border-t border-slate-200 mt-2">
@@ -85,7 +108,7 @@ export default function POSCart({
             <span className="text-primary">${totals.total.toFixed(2)}</span>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-5 gap-3">
           <button
             onClick={onPrintPreCheck}
@@ -95,7 +118,7 @@ export default function POSCart({
           >
             <Printer size={20} />
           </button>
-          
+
           <button
             onClick={onCheckout}
             disabled={isEmpty || !selectedTable || loading || printingLoading}
@@ -103,22 +126,20 @@ export default function POSCart({
           >
             {loading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white" />
+            ) : canCheckout ? (
+              <>
+                <DollarSign />
+                Cobrar Orden
+              </>
             ) : (
-              canCheckout ? (
-                <>
-                  <DollarSign />
-                  Cobrar Orden
-                </>
-              ) : (
-                <>
-                  <Printer size={20} />
-                  Enviar Comanda
-                </>
-              )
+              <>
+                <Printer size={20} />
+                Enviar Comanda
+              </>
             )}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
