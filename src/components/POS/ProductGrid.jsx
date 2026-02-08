@@ -1,3 +1,5 @@
+import { Plus } from 'lucide-react'
+
 export default function ProductGrid({ products, onAddToCart }) {
   if (products.length === 0) {
     return (
