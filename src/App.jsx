@@ -60,10 +60,12 @@ function ProtectedRoute({ allowedRoles }) {
 
 function App() {
   const { initialize } = useAuthStore()
+  const { fetchSettings } = useBusinessStore()
 
   useEffect(() => {
     initialize()
-  }, [initialize])
+    fetchSettings()
+  }, [initialize, fetchSettings])
 
   return (
     <BrowserRouter>
