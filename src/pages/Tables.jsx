@@ -25,16 +25,21 @@ import {
 import { clsx } from 'clsx'
 import { useNavigate } from 'react-router-dom'
 
+import { useRolePermissions } from '@/hooks/useRolePermissions'
+
 export default function Tables() {
   const navigate = useNavigate()
   const { profile } = useAuthStore()
-  const { 
-    loading, 
-    allTables, 
-    areas, 
-    metrics, 
-    deleteArea, 
-    deleteTable, 
+  const { canEditTableLayout, canCheckout, role } = useRolePermissions()
+  const isWaiter = role === 'waiter'
+
+  const {
+    loading,
+    allTables,
+    areas,
+    metrics,
+    deleteArea,
+    deleteTable,
     fetchTables,
     fetchAreas
   } = useTables()
@@ -75,7 +80,7 @@ export default function Tables() {
         .from('order_items')
         .select('*, products(name, price)')
         .eq('order_id', orderId)
-      
+
       if (error) throw error
       setOrderDetails(data || [])
     } catch (error) {
@@ -130,7 +135,7 @@ export default function Tables() {
   }
 
   const tablesToDisplay = useMemo(() => {
-    return selectedAreaId 
+    return selectedAreaId
       ? allTables.filter(t => t.area_id === selectedAreaId)
       : allTables
   }, [allTables, selectedAreaId])
@@ -146,8 +151,8 @@ export default function Tables() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <span className="text-sm">Plano interactivo del área</span>
-              <select 
-                value={selectedAreaId || ''} 
+              <select
+                value={selectedAreaId || ''}
                 onChange={(e) => setSelectedAreaId(e.target.value)}
                 className="bg-transparent border-none font-bold text-slate-900 dark:text-white focus:ring-0 cursor-pointer hover:underline"
               >
@@ -163,7 +168,7 @@ export default function Tables() {
 
         <div className="flex items-center gap-3">
            <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <button 
+            <button
               onClick={() => setViewMode('map')}
               className={clsx(
                 "px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2",
@@ -173,7 +178,7 @@ export default function Tables() {
               <LayoutGrid size={16} />
               Vista Mapa
             </button>
-            <button 
+            <button
               onClick={() => setViewMode('list')}
               className={clsx(
                 "px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2",
@@ -185,9 +190,10 @@ export default function Tables() {
             </button>
           </div>
 
-          {profile?.role === 'admin' && (
+          {/* Admin Actions in Header */}
+          {canEditTableLayout && (
              <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => setShowTableModal(true)}
                   className="w-11 h-11 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-slate-200 dark:border-slate-700"
                   title="Añadir Mesa"
@@ -206,7 +212,7 @@ export default function Tables() {
           <div className="absolute top-12 left-12">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 dark:text-slate-700">Sector {activeAreaName}</span>
           </div>
-          
+
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-56 bg-[#f8f9fa] dark:bg-slate-900 rounded-l-[2rem] border-y border-l border-slate-100 dark:border-slate-800 flex items-center justify-center">
             <span className="rotate-90 text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 dark:text-slate-700">Barra Principal</span>
           </div>
@@ -217,17 +223,17 @@ export default function Tables() {
                 {tablesToDisplay.map((table) => {
                   const isOccupied = table.status === 'occupied'
                   const isReserved = table.status === 'reserved'
-                  
+
                   return (
-                    <div 
+                    <div
                       key={table.id}
                       onClick={() => handleTableClick(table)}
                       className="group cursor-pointer flex flex-col items-center gap-5 transition-all active:scale-95"
                     >
-                      <div className={clsx(
+                      <div classNamex={clsx(
                         "w-36 h-36 rounded-[2.5rem] border-3 flex flex-col items-center justify-center p-6 relative transition-all duration-300 shadow-sm",
-                        isOccupied 
-                          ? "border-[#f43f5e] bg-white dark:bg-slate-800 scale-105 shadow-xl shadow-[#f43f5e]/10" 
+                        isOccupied
+                          ? "border-[#f43f5e] bg-white dark:bg-slate-800 scale-105 shadow-xl shadow-[#f43f5e]/10"
                           : isReserved
                             ? "border-amber-400 bg-white dark:bg-slate-800"
                             : "border-[#10b981] bg-white dark:bg-slate-800 hover:shadow-lg hover:shadow-[#10b981]/5"
@@ -272,7 +278,7 @@ export default function Tables() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {tablesToDisplay.map(table => (
-                  <div 
+                  <div
                     key={table.id}
                     onClick={() => handleTableClick(table)}
                     className="p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-[#10b981] transition-all cursor-pointer group"
@@ -327,7 +333,7 @@ export default function Tables() {
                 {activeAreaName} • Mesero: {selectedTable?.current_order?.waiter_name || 'Carlos'}
               </p>
             </div>
-            <button 
+            <button
               onClick={() => setIsSidePanelOpen(false)}
               className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
             >
@@ -365,8 +371,8 @@ export default function Tables() {
                 <p className="text-[#61896f] text-[10px] font-bold">Meta: 70 min</p>
               </div>
               <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden text-[0px]">
-                <div 
-                  className="h-full bg-[#111813] dark:bg-[#2bee6c] transition-all duration-700" 
+                <div
+                  className="h-full bg-[#111813] dark:bg-[#2bee6c] transition-all duration-700"
                   style={{ width: selectedTable?.status === 'occupied' ? '75%' : '0%' }}
                 ></div>
               </div>
@@ -379,7 +385,7 @@ export default function Tables() {
           {selectedTable?.status === 'occupied' ? (
             <div className="space-y-8">
               <h3 className="text-[#111813] dark:text-white text-lg font-bold leading-tight tracking-tight flex items-center gap-2">
-                Detalle de Orden 
+                Detalle de Orden
                 <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-md text-zinc-500 font-black uppercase">
                   {orderDetails?.length || 0} Items
                 </span>
@@ -432,20 +438,20 @@ export default function Tables() {
                     {selectedTable?.current_order?.notes || 'Sin observaciones especiales para esta mesa.'}
                   </p>
                 </div>
-                
+
                 {/* Quick Minimal Links & Admin Actions */}
                 <div className="flex flex-wrap gap-x-6 gap-y-3 pt-4 border-t border-zinc-50 dark:border-zinc-900">
-                  <button 
+                  <button
                     onClick={() => navigate(`/pos/split-bill/${selectedTable.id}`, { state: { table: selectedTable } })}
                     className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
                   >
                     Dividir Cuenta
                   </button>
                   <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Cambiar de Mesa</button>
-                  
-                  {profile?.role === 'admin' && (
+
+                  {canEditTableLayout && (
                     <>
-                      <button 
+                      <button
                         onClick={() => {
                           setEditingTable(selectedTable)
                           setTableForm({
@@ -459,7 +465,7 @@ export default function Tables() {
                       >
                         Editar Mesa
                       </button>
-                      <button 
+                      <button
                          onClick={() => {
                            if (confirm('¿Eliminar esta mesa?')) {
                              deleteTable(selectedTable.id)
@@ -496,21 +502,31 @@ export default function Tables() {
               ${selectedTable?.current_order?.total_amount?.toFixed(2) || '0.00'}
             </p>
           </div>
-          
+
           <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => navigate('/pos/orders', { state: { table: selectedTable } })}
-              className={clsx(
-                "w-full py-4.5 rounded-xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl",
-                selectedTable?.status === 'occupied' 
-                  ? "bg-[#2bee6c] text-[#102216] shadow-[#2bee6c]/20 hover:scale-[1.02]" 
-                  : "bg-zinc-900 text-white dark:bg-white dark:text-black hover:scale-[1.02]"
-              )}
-            >
-              <Printer size={20} />
-              {selectedTable?.status === 'occupied' ? 'Cerrar Cuenta' : 'Nueva Orden'}
-            </button>
-            <button 
+            {/* Logic:
+                - If Available: ALL roles can "Nueva Orden".
+                - If Occupied:
+                  - Admin/Cashier (canCheckout): Can "Cerrar Cuenta".
+                  - Waiter (!canCheckout): Button HIDDEN or replaced.
+            */}
+            {(selectedTable?.status !== 'occupied' || canCheckout) && (
+              <button
+                onClick={() => navigate('/pos/orders', { state: { table: selectedTable } })}
+                className={clsx(
+                  "w-full py-4.5 rounded-xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl",
+                  selectedTable?.status === 'occupied'
+                    ? "bg-[#2bee6c] text-[#102216] shadow-[#2bee6c]/20 hover:scale-[1.02]"
+                    : "bg-zinc-900 text-white dark:bg-white dark:text-black hover:scale-[1.02]"
+                )}
+              >
+                <Printer size={20} />
+                {selectedTable?.status === 'occupied' ? 'Cerrar Cuenta' : 'Nueva Orden'}
+              </button>
+            )}
+
+            {/* Add Product is always available if occupied, or if free (implied new order) */}
+            <button
               onClick={() => navigate('/pos/orders', { state: { table: selectedTable, addProduct: true } })}
               className="w-full py-3.5 border-2 border-zinc-100 dark:border-zinc-800 text-[#111813] dark:text-zinc-300 font-black text-[11px] uppercase tracking-widest rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
             >

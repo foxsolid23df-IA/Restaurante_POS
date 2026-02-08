@@ -14,39 +14,48 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useBranchStore } from '@/store/branchStore'
+import { useRolePermissions } from '@/hooks/useRolePermissions'
 import { clsx } from 'clsx'
-import { useState } from 'react'
-
-const menuGroups = [
-  {
-    title: 'OPERACIONES',
-    items: [
-      { icon: Table2, label: 'Mesas / Salón', path: '/pos/tables' },
-      { icon: Store, label: 'Punto de Venta', path: '/pos/orders' },
-    ]
-  },
-  {
-    title: 'ADMINISTRACIÓN',
-    items: [
-      { icon: Receipt, label: 'Corte de Caja', path: '/pos/cash-closing' },
-      { icon: Coins, label: 'Ventas Activas', path: '/pos/active-orders' },
-    ]
-  },
-  {
-    title: 'SERVICIOS',
-    items: [
-      { icon: ChefHat, label: 'Cocina', path: '/pos/kitchen' },
-      { icon: Coffee, label: 'Barra', path: '/pos/bar' },
-      { icon: Truck, label: 'Delivery / Envios', path: '/pos/delivery' },
-    ]
-  }
-]
+import { useState, useMemo } from 'react'
 
 export default function POSSidebar() {
   const location = useLocation()
   const { profile, signOut } = useAuthStore()
   const { currentBranch } = useBranchStore()
   const [isDarkMode, setIsDarkMode] = useState(true)
+  const { canViewCashClosing } = useRolePermissions()
+
+  const menuGroups = useMemo(() => {
+    const groups = [
+      {
+        title: 'OPERACIONES',
+        items: [
+          { icon: Table2, label: 'Mesas / Salón', path: '/pos/tables' },
+          { icon: Store, label: 'Punto de Venta', path: '/pos/orders' },
+        ]
+      },
+      {
+        title: 'ADMINISTRACIÓN',
+        items: [
+          { icon: Receipt, label: 'Corte de Caja', path: '/pos/cash-closing', restricted: !canViewCashClosing },
+          { icon: Coins, label: 'Ventas Activas', path: '/pos/active-orders' },
+        ]
+      },
+      {
+        title: 'SERVICIOS',
+        items: [
+          { icon: ChefHat, label: 'Cocina', path: '/pos/kitchen' },
+          { icon: Coffee, label: 'Barra', path: '/pos/bar' },
+          { icon: Truck, label: 'Delivery / Envios', path: '/pos/delivery' },
+        ]
+      }
+    ]
+
+    return groups.map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.restricted)
+    })).filter(group => group.items.length > 0)
+  }, [canViewCashClosing])
 
   return (
     <aside className="w-72 bg-[#1e2532] text-white min-h-screen flex flex-col shadow-2xl z-50">

@@ -1,4 +1,4 @@
-import { ShoppingCart, Trash2, Minus, Plus, Printer, DollarSign } from 'lucide-react'
+import { useRolePermissions } from '@/hooks/useRolePermissions'
 
 export default function POSCart({ 
   cart, 
@@ -13,6 +13,8 @@ export default function POSCart({
   selectedTable, // Needed to disable checkout if no table selected
   taxName = 'IVA'
 }) {
+  const { canCheckout } = useRolePermissions()
+
   return (
     <div className="w-96 bg-white border-l border-slate-200 flex flex-col shadow-2xl z-10 transition-all duration-300">
       <div className="p-6 border-b border-slate-100 bg-white">
@@ -102,9 +104,18 @@ export default function POSCart({
             {loading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white" />
             ) : (
-              <DollarSign />
+              canCheckout ? (
+                <>
+                  <DollarSign />
+                  Cobrar Orden
+                </>
+              ) : (
+                <>
+                  <Printer size={20} />
+                  Enviar Comanda
+                </>
+              )
             )}
-            Cobrar Orden
           </button>
         </div>
       </div>

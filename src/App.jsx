@@ -85,30 +85,44 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager']}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
           <Route index element={<AdminDashboard />} />
           <Route path="reports" element={<SalesReports />} />
-          <Route path="catalog" element={<Products />} /> {/* Can split later */}
+          <Route path="catalog" element={<Products />} />
           <Route path="catalog/categories" element={<Categories />} />
           <Route path="catalog/:productId/recipe" element={<RecipeBuilder />} />
           <Route path="inventory" element={<Inventory />} />
-          <Route path="staff" element={<Users />} />
+          
+          {/* Admin Only Routes */}
+          <Route path="staff" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Users />
+            </ProtectedRoute>
+          } />
           <Route path="crm" element={<CRM />} />
           <Route path="purchases" element={<Purchases />} />
-          <Route path="branches" element={<Branches />} />
+          <Route path="branches" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Branches />
+            </ProtectedRoute>
+          } />
           <Route path="salon" element={<SalonLayout />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Settings />
+            </ProtectedRoute>
+          } />
         </Route>
 
         {/* POS Portal */}
         <Route
           path="/pos"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']}>
               <POSLayout />
             </ProtectedRoute>
           }
@@ -122,8 +136,19 @@ function App() {
           <Route path="delivery" element={<Delivery />} />
           <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
           <Route path="reservations" element={<Reservations />} />
-          <Route path="cash-closing" element={<CashClosing />} />
-          <Route path="daily-closing" element={<DailyClosing />} />
+          
+          {/* Restricted POS Routes */}
+          <Route path="cash-closing" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
+              <CashClosing />
+            </ProtectedRoute>
+          } />
+          <Route path="daily-closing" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager']}>
+              <DailyClosing />
+            </ProtectedRoute>
+          } />
+          
           <Route path="loyalty" element={<LoyaltyProgram />} />
           <Route path="customer/:id" element={<CustomerProfile />} />
           <Route path="split-bill/:tableId" element={<SplitBill />} />
