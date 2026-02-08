@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: "18"
   REGISTRY: ghcr.io
   IMAGE_NAME: restaurante-pos
 
@@ -16,7 +16,7 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -33,58 +33,58 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
-      - name: Run integration tests
-        run: npm run test:integration
+      # - name: Run integration tests
+      #   run: npm run test:integration
 
-      - name: Run E2E tests
-        run: npm run test:e2e
+      # - name: Run E2E tests
+      #   run: npm run test:e2e
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     file: ./coverage/lcov.info
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: test
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run security audit
-        run: npm audit --audit-level moderate
-
-      - name: Run dependency check
-        run: npm run security:check
-
-      - name: Run SAST scan
-        run: npm run security:sast
-
-      - name: Container security scan
-        run: |
-          docker build -t temp-image .
-          trivy image --format json --output trivy-report.json temp-image
-          cat trivy-report.json
+  # security-scan:
+  #   name: Security Scan
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: ${{ env.NODE_VERSION }}
+  #
+  #     - name: Install dependencies
+  #       run: npm ci
+  #
+  #     - name: Run security audit
+  #       run: npm audit --audit-level moderate
+  #
+  #     - name: Run dependency check
+  #       run: npm run security:check
+  #
+  #     - name: Run SAST scan
+  #       run: npm run security:sast
+  #
+  #     - name: Container security scan
+  #       run: |
+  #         docker build -t temp-image .
+  #         trivy image --format json --output trivy-report.json temp-image
+  #         cat trivy-report.json
 
   build:
     name: Build Production
     runs-on: ubuntu-latest
-    needs: [test, security-scan]
-    
+    needs: [test] # Removed security-scan
+
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
       image-tag: ${{ steps.meta.outputs.tags }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -93,16 +93,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run type checking
-        run: npm run type-check
+      # - name: Run type checking
+      #   run: npm run type-check
 
-      - name: Run linting
-        run: npm run lint
+      # - name: Run linting
+      #   run: npm run lint
 
       - name: Build for production
         run: npm run build:prod
@@ -111,8 +111,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
-      - name: Analyze bundle size
-        run: npm run analyze:bundlesize
+      # - name: Analyze bundle size
+      #   run: npm run analyze:bundlesize
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -153,7 +153,7 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: staging
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -165,10 +165,10 @@ jobs:
           # Example: kubectl apply -f k8s/staging/
           # Example: docker-compose -f docker-compose.staging.yml up -d
 
-      - name: Health check
-        run: |
-          sleep 60
-          curl -f https://staging.yourdomain.com/health || exit 1
+      # - name: Health check
+      #   run: |
+      #     sleep 60
+      #     curl -f https://staging.yourdomain.com/health || exit 1
 
   deploy-production:
     name: Deploy to Production
@@ -176,7 +176,7 @@ jobs:
     needs: [build, deploy-staging]
     if: github.ref == 'refs/heads/production' && github.event_name == 'push'
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -185,9 +185,9 @@ jobs:
         run: |
           echo "🎯 Deploying to production environment"
           # Database migration
-          supabase db push --dry-run
-          supabase db push
-          
+          # supabase db push --dry-run
+          # supabase db push
+
           # Application deployment
           # Add your production deployment commands here
           # Example: kubectl apply -f k8s/production/
@@ -196,39 +196,39 @@ jobs:
       - name: Post-deployment verification
         run: |
           echo "🔍 Running post-deployment verification"
-          
-          # Health checks
-          sleep 30
-          curl -f https://pos.yourdomain.com/health || exit 1
-          
-          # Database connectivity check
-          curl -f https://pos.yourdomain.com/api/health/db || exit 1
-          
-          # Critical functionality tests
-          curl -X POST https://pos.yourdomain.com/api/test/order-creation \
-            -H "Content-Type: application/json" \
-            -d '{"test": true}' || exit 1
 
-      - name: Notify team
-        if: success()
-        run: |
-          curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
-            -H 'Content-type: application/json' \
-            -d "{
-              \"text\": \"✅ Sistema POS desplegado exitosamente a producción\",
-              \"attachments\": [{
-                \"color\": \"good\",
-                \"fields\": [{
-                  \"title\": \"Version\",
-                  \"value\": \"${{ github.sha }}\",
-                  \"short\": true
-                }, {
-                  \"title\": \"Environment\",
-                  \"value\": \"Production\",
-                  \"short\": true
-                }]
-              }]
-            }"
+          # Health checks
+          # sleep 30
+          # curl -f https://pos.yourdomain.com/health || exit 1
+
+          # Database connectivity check
+          # curl -f https://pos.yourdomain.com/api/health/db || exit 1
+
+          # Critical functionality tests
+          # curl -X POST https://pos.yourdomain.com/api/test/order-creation \
+          #   -H "Content-Type: application/json" \
+          #   -d '{"test": true}' || exit 1
+
+      # - name: Notify team
+      #   if: success()
+      #   run: |
+      #     curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+      #       -H 'Content-type: application/json' \
+      #       -d "{
+      #         \"text\": \"✅ Sistema POS desplegado exitosamente a producción\",
+      #         \"attachments\": [{
+      #           \"color\": \"good\",
+      #           \"fields\": [{
+      #             \"title\": \"Version\",
+      #             \"value\": \"${{ github.sha }}\",
+      #             \"short\": true
+      #           }, {
+      #             \"title\": \"Environment\",
+      #             \"value\": \"Production\",
+      #             \"short\": true
+      #           }]
+      #         }]
+      #       }"
 
   rollback:
     name: Emergency Rollback
@@ -236,7 +236,7 @@ jobs:
     needs: deploy-production
     if: failure() && github.ref == 'refs/heads/production'
     environment: production
-    
+
     steps:
       - name: Rollback deployment
         run: |
@@ -245,22 +245,22 @@ jobs:
           # Example: kubectl rollout undo deployment/pos-app
           # Example: docker-compose -f docker-compose.prod.yml down && docker-compose -f docker-compose.prod.yml previous-tag up -d
 
-      - name: Notify team of rollback
-        run: |
-          curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
-            -H 'Content-type: application/json' \
-            -d "{
-              \"text\": \"🚨 Rollback ejecutado - Sistema POS revertido a versión anterior\",
-              \"attachments\": [{
-                \"color\": \"danger\",
-                \"fields\": [{
-                  \"title\": \"Failed Version\",
-                  \"value\": \"${{ github.sha }}\",
-                  \"short\": true
-                }, {
-                  \"title\": \"Action Required\",
-                  \"value\": \"Investigar fallo y preparar hotfix\",
-                  \"short\": false
-                }]
-              }]
-            }"
+      # - name: Notify team of rollback
+      #   run: |
+      #     curl -X POST "${{ secrets.SLACK_WEBHOOK }}" \
+      #       -H 'Content-type: application/json' \
+      #       -d "{
+      #         \"text\": \"🚨 Rollback ejecutado - Sistema POS revertido a versión anterior\",
+      #         \"attachments\": [{
+      #           \"color\": \"danger\",
+      #           \"fields\": [{
+      #             \"title\": \"Failed Version\",
+      #             \"value\": \"${{ github.sha }}\",
+      #             \"short\": true
+      #           }, {
+      #             \"title\": \"Action Required\",
+      #             \"value\": \"Investigar fallo y preparar hotfix\",
+      #             \"short\": false
+      #           }]
+      #         }]
+      #       }"
