@@ -10,7 +10,7 @@ on:
 env:
   NODE_VERSION: "18"
   REGISTRY: ghcr.io
-  IMAGE_NAME: restaurante-pos
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   test:
