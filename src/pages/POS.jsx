@@ -45,10 +45,10 @@ function POSContent() {
   const [showCustomerList, setShowCustomerList] = useState(false)
 
   useEffect(() => {
-    if (selectedTable && cart) {
+    if (selectedTable && cart && cart.table_id !== selectedTable) {
       setTable(cart.id, selectedTable)
     }
-  }, [selectedTable, cart, setTable])
+  }, [selectedTable, cart?.id, cart?.table_id, setTable])
 
   const handleAddToCart = (product) => {
     addToCart({

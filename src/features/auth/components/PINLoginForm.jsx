@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Delete, LogIn, Keypad } from 'lucide-react'
+import { Delete, LogIn } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { toast } from 'sonner'
 
