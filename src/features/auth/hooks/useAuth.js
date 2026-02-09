@@ -23,6 +23,7 @@ export const useAuth = () => {
         onSuccess: (profile) => {
             localStorage.setItem('pos_profile', JSON.stringify(profile))
             queryClient.setQueryData(['profile', 'current'], profile)
+            setProfile(profile) // ← Actualizar Zustand store
         }
     })
 
