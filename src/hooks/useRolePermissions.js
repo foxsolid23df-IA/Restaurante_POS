@@ -1,53 +1,57 @@
-
 import { useAuthStore } from '@/store/authStore'
 
 export const ROLES = {
-    ADMIN: 'admin',
-    MANAGER: 'manager',
-    CASHIER: 'cashier',
-    WAITER: 'waiter'
+  ADMIN: 'admin',
+  MANAGER: 'manager',
+  CASHIER: 'cashier',
+  WAITER: 'waiter'
+}
+
+export const hasPermission = (profile, permission, fallbackRoles = []) => {
+  if (!profile) return false
+  if (!permission) return true
+
+  if (profile.permissions && Object.prototype.hasOwnProperty.call(profile.permissions, permission)) {
+    return Boolean(profile.permissions[permission])
+  }
+
+  return fallbackRoles.includes(profile.role)
 }
 
 export function useRolePermissions() {
-    const { profile } = useAuthStore()
-    const role = profile?.role || 'guest'
+  const { profile } = useAuthStore()
+  const role = profile?.role || 'guest'
 
-    const permissions = {
-        // General
-        isAdmin: role === ROLES.ADMIN,
-        isManager: role === ROLES.MANAGER,
-        isCashier: role === ROLES.CASHIER,
-        isWaiter: role === ROLES.WAITER,
+  const permissions = {
+    isAdmin: role === ROLES.ADMIN,
+    isManager: role === ROLES.MANAGER,
+    isCashier: role === ROLES.CASHIER,
+    isWaiter: role === ROLES.WAITER,
 
-        // Vistas
-        canViewAdminPanel: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
-        canViewDashboard: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
-        canViewInventory: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
-        canViewReports: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
-        canViewSettings: [ROLES.ADMIN].includes(role),
+    canViewAdminPanel: hasPermission(profile, 'access_admin', [ROLES.ADMIN, ROLES.MANAGER]),
+    canViewDashboard: hasPermission(profile, 'access_admin', [ROLES.ADMIN, ROLES.MANAGER]),
+    canViewInventory: hasPermission(profile, 'manage_inventory', [ROLES.ADMIN, ROLES.MANAGER]),
+    canViewReports: hasPermission(profile, 'view_reports', [ROLES.ADMIN, ROLES.MANAGER]),
+    canViewSettings: role === ROLES.ADMIN,
 
-        // POS / Tables Actions
-        canEditTableLayout: [ROLES.ADMIN, ROLES.MANAGER].includes(role), // Drag & drop, create/delete tables
-        canManageAllTables: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role), // View all tables vs only assigned
+    canEditTableLayout: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
+    canManageAllTables: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role),
 
-        // Order Actions
-        canCreateOrder: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER, ROLES.WAITER].includes(role),
-        canAddItems: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER, ROLES.WAITER].includes(role),
-        canDeleteItems: [ROLES.ADMIN, ROLES.MANAGER].includes(role), // Delete sent items
-        canVoidOrder: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
+    canCreateOrder: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER, ROLES.WAITER].includes(role),
+    canAddItems: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER, ROLES.WAITER].includes(role),
+    canDeleteItems: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
+    canVoidOrder: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
 
-        // Payment / Cash
-        canCheckout: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role),
-        canViewCashClosing: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role),
-        canProcessRefund: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
+    canCheckout: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role),
+    canViewCashClosing: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role),
+    canProcessRefund: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
 
-        // Data
-        canManageCatalog: [ROLES.ADMIN].includes(role),
-        canManageStaff: [ROLES.ADMIN].includes(role),
-    }
+    canManageCatalog: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
+    canManageStaff: hasPermission(profile, 'manage_staff', [ROLES.ADMIN])
+  }
 
-    return {
-        role,
-        ...permissions
-    }
+  return {
+    role,
+    ...permissions
+  }
 }

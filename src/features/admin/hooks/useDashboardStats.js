@@ -1,10 +1,10 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { adminApi } from '../api/adminApi'
 
-export const useDashboardStats = () => {
+export const useDashboardStats = (branchId) => {
     const query = useSuspenseQuery({
-        queryKey: ['dashboardStats'],
-        queryFn: adminApi.getStats,
+        queryKey: ['operationalDashboard', branchId || 'all'],
+        queryFn: () => adminApi.getOperationalDashboard({ branchId }),
         refetchInterval: 60000 // Refresh every minute
     })
 

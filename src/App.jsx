@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, Suspense } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from 'sonner'
@@ -33,11 +33,27 @@ import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import Branches from '@/pages/admin/Branches'
 import SplitBill from '@/pages/SplitBill'
 import SalonLayout from '@/pages/admin/SalonLayout'
+import { hasPermission } from '@/hooks/useRolePermissions'
 
 // Protected Route wrapper
-function ProtectedRoute({ allowedRoles }) {
+const adminRoutePermissions = [
+  { prefix: '/admin/reports', permission: 'view_reports', fallbackRoles: ['admin', 'manager'] },
+  { prefix: '/admin/inventory', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager'] },
+  { prefix: '/admin/purchases', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager', 'cashier'] },
+  { prefix: '/admin/staff', permission: 'manage_staff', fallbackRoles: ['admin'] },
+  { prefix: '/admin/settings', permission: null, fallbackRoles: ['admin'] },
+  { prefix: '/admin/branches', permission: null, fallbackRoles: ['admin'] },
+  { prefix: '/admin', permission: 'access_admin', fallbackRoles: ['admin', 'manager'] }
+]
+
+function routePermissionFor(pathname) {
+  return adminRoutePermissions.find((entry) => pathname === entry.prefix || pathname.startsWith(`${entry.prefix}/`))
+}
+
+function ProtectedRoute({ allowedRoles, requireSession = false, useAdminPermissions = false }) {
   const { user, profile, loading } = useAuthStore()
   const { initializeBranch } = useBranchStore()
+  const location = useLocation()
 
   useEffect(() => {
     if (profile) {
@@ -47,6 +63,10 @@ function ProtectedRoute({ allowedRoles }) {
 
   if (loading) return null
 
+  if (requireSession && !user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+
   if (!user && !profile) {
     return <Navigate to="/pin-login" replace />
   }
@@ -54,6 +74,19 @@ function ProtectedRoute({ allowedRoles }) {
   if (allowedRoles && !allowedRoles.includes(profile?.role)) {
     if (window.location.pathname === '/pos' || window.location.pathname === '/pos/') return null;
     return <Navigate to="/pos" replace />
+  }
+
+  if (useAdminPermissions) {
+    const routeAccess = routePermissionFor(location.pathname)
+    if (routeAccess) {
+      const allowed = routeAccess.permission
+        ? hasPermission(profile, routeAccess.permission, routeAccess.fallbackRoles)
+        : routeAccess.fallbackRoles.includes(profile?.role)
+
+      if (!allowed) {
+        return <Navigate to="/pos" replace />
+      }
+    }
   }
 
   return <Outlet />
@@ -82,7 +115,7 @@ function App() {
           <Route path="/pin-login" element={<PINLogin />} />
           
           {/* Admin Portal */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} requireSession useAdminPermissions />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="reports" element={<SalesReports />} />
