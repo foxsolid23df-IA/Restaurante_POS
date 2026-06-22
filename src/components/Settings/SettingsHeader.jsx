@@ -1,20 +1,26 @@
 import { Save } from 'lucide-react'
 
-export default function SettingsHeader({ onSave, loading }) {
+export default function SettingsHeader({ onSave, loading, activeLabel = 'Configuración' }) {
   return (
-    <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+    <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
       <div>
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Configuración del Sistema</h1>
-        <p className="text-slate-500 mt-2 font-medium">Impuestos, datos fiscales y personalización de la experiencia del cliente</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Administración</p>
+        <h1 className="text-3xl font-bold text-slate-950">Configuración del sistema</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Identidad, fiscal, ticket, lealtad e impresión por sucursal.
+        </p>
       </div>
-      <button 
-        onClick={onSave}
-        disabled={loading}
-        className="bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black flex items-center gap-4 shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:bg-black transition-all active:scale-95 disabled:opacity-50 text-sm uppercase tracking-widest"
-      >
-        <Save size={24} className="text-primary" />
-        {loading ? 'Sincronizando...' : 'Guardar Cambios'}
-      </button>
+      {onSave && (
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Save size={18} />
+          {loading ? 'Guardando...' : `Guardar ${activeLabel}`}
+        </button>
+      )}
     </header>
   )
 }

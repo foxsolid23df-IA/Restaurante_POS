@@ -1,31 +1,21 @@
-import { supabase } from '@/lib/supabase'
+import { salonApi } from '@/features/salon/api/salonApi'
 
 export const tablesApi = {
-    getAreas: async () => {
-        const { data, error } = await supabase
-            .from('areas')
-            .select('*')
-            .order('name')
-        if (error) throw error
-        return data
+    getLayout: async (branchId) => {
+        return salonApi.getLayout(branchId)
     },
 
-    getTables: async () => {
-        const { data, error } = await supabase
-            .from('tables')
-            .select('*, areas(name)')
-            .order('name')
-        if (error) throw error
-        return data
+    getAreas: async (branchId) => {
+        const layout = await salonApi.getLayout(branchId)
+        return layout.areas
+    },
+
+    getTables: async (branchId) => {
+        const layout = await salonApi.getLayout(branchId)
+        return layout.tables
     },
 
     getOrderDetails: async (orderId) => {
-        if (!orderId) return null
-        const { data, error } = await supabase
-            .from('order_items')
-            .select('*, products(name, price)')
-            .eq('order_id', orderId)
-        if (error) throw error
-        return data
+        return salonApi.getOrderDetails(orderId)
     }
 }

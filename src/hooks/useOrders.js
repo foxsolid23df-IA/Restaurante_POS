@@ -5,6 +5,7 @@ import { useInventoryIntegration } from './useInventoryIntegration'
 import { useBusinessStore } from './useBusinessSettings'
 import { useBranchStore } from '@/store/branchStore'
 import { useAuthStore } from '@/store/authStore'
+import { crmApi } from '@/features/crm/api/crmApi'
 
 // Hook principal
 export function useOrders() {
@@ -69,7 +70,7 @@ export function useOrders() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id])
 
   // Crear orden desde un carrito
   const createOrderFromCart = useCallback(async (
@@ -107,6 +108,7 @@ export function useOrders() {
           total_amount: totalAmount,
           status: 'pending',
           payment_status: 'pending',
+          customer_id: cartData.customer_id || cart.customer_id || null,
           customer_info: cartData.customer_info || cart.customer_info,
           notes: cartData.notes,
           created_at: new Date().toISOString()
@@ -119,7 +121,7 @@ export function useOrders() {
       // Crear los items de la orden
       const orderItems = cart.items.map(item => ({
         order_id: order.id,
-        product_id: item.id,
+        product_id: item.product_id || item.id,
         quantity: item.quantity,
         price_at_order: item.price,
         notes: item.notes,
@@ -132,57 +134,25 @@ export function useOrders() {
 
       if (itemsError) throw itemsError
 
-      // Verificar disponibilidad de inventario antes de procesar
+      // Verificar disponibilidad de inventario sin bloquear la venta en MVP.
       const availabilityCheck = await checkInventoryAvailability(orderItems)
       
       if (!availabilityCheck.available) {
         const issuesText = availabilityCheck.issues.map(issue => 
           `${issue.item_name}: necesita ${issue.needed}, disponible ${issue.available}`
         ).join(', ')
-        
-        throw new Error(`Inventario insuficiente: ${issuesText}`)
+        console.warn(`Inventario insuficiente, venta permitida: ${issuesText}`)
       }
 
-      // Actualizar inventario con los items de la orden
-      await processOrderInventoryDeduction(orderItems)
+      // Actualizar inventario con los items de la orden. Nunca debe romper la creación de la orden.
+      try {
+        await processOrderInventoryDeduction(order.id)
+      } catch (inventoryError) {
+        console.warn('No se pudo descontar inventario de la orden:', inventoryError)
+      }
 
       // Limpiar el carrito
       useCartStore.getState().clearCart(activeCartId)
-
-      // --- LOGICA DE LEALTAD ---
-      if (cartData.customer_id) {
-        try {
-          const pointsPerUnit = settings?.points_per_currency || 1
-          const currencyUnit = settings?.currency_unit_amount || 10
-          
-          const pointsEarned = Math.floor((totalAmount / currencyUnit) * pointsPerUnit)
-
-          if (pointsEarned > 0) {
-            await supabase.from('loyalty_transactions').insert([{
-              customer_id: cartData.customer_id,
-              points: pointsEarned,
-              transaction_type: 'earn',
-              description: `Compra en Orden #${order.id.slice(0, 8)}`,
-              order_id: order.id
-            }])
-
-            const { data: customer } = await supabase
-              .from('customers')
-              .select('loyalty_points')
-              .eq('id', cartData.customer_id)
-              .single()
-
-            if (customer) {
-              await supabase
-                .from('customers')
-                .update({ loyalty_points: (customer.loyalty_points || 0) + pointsEarned })
-                .eq('id', cartData.customer_id)
-            }
-          }
-        } catch (loyaltyErr) {
-          console.error('Error al procesar puntos de lealtad:', loyaltyErr)
-        }
-      }
 
       // Refrescar órdenes
       await fetchOrders()
@@ -251,10 +221,20 @@ export function useOrders() {
     orderId,
     paymentMethod
   ) => {
-    return updateOrderStatus(orderId, {
+    const result = await updateOrderStatus(orderId, {
       payment_status: 'paid',
       payment_method: paymentMethod
     })
+
+    if (!result.error) {
+      try {
+        await crmApi.awardOrderLoyaltyPoints(orderId)
+      } catch (loyaltyError) {
+        console.warn('No se pudieron otorgar puntos de lealtad:', loyaltyError)
+      }
+    }
+
+    return result
   }, [updateOrderStatus])
 
   // Obtener orden por ID

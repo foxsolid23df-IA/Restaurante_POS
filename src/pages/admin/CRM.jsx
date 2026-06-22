@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useReservations } from '@/hooks/useReservations'
-import { Loader2 } from 'lucide-react'
+import { AlertTriangle, Award, CalendarClock, Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
+import { useBranchStore } from '@/store/branchStore'
+import { crmApi } from '@/features/crm/api/crmApi'
 
 // Components
 import CRMHeader from '@/components/CRM/CRMHeader'
@@ -17,6 +19,7 @@ import ReservationModal from '@/components/CRM/ReservationModal'
 
 export default function CRM() {
   const { settings, fetchSettings } = useBusinessStore()
+  const { currentBranch } = useBranchStore()
   
   useEffect(() => {
     fetchSettings()
@@ -45,12 +48,47 @@ export default function CRM() {
   const [showReservationModal, setShowReservationModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [dashboard, setDashboard] = useState({})
+  const [customerFilter, setCustomerFilter] = useState('active')
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone?.includes(searchTerm)
-  )
+  useEffect(() => {
+    let mounted = true
+
+    const loadDashboard = async () => {
+      try {
+        const data = await crmApi.getDashboard(currentBranch?.id)
+        if (mounted) setDashboard(data || {})
+      } catch (error) {
+        if (mounted) {
+          setDashboard({})
+          toast.error(error.message)
+        }
+      }
+    }
+
+    loadDashboard()
+    return () => {
+      mounted = false
+    }
+  }, [currentBranch?.id, customers.length, reservations.length])
+
+  const filteredCustomers = useMemo(() => {
+    const term = searchTerm.toLowerCase()
+
+    return customers.filter((customer) => {
+      const matchesSearch = customer.name?.toLowerCase().includes(term)
+        || customer.email?.toLowerCase().includes(term)
+        || customer.phone?.includes(searchTerm)
+
+      const matchesFilter = customerFilter === 'all'
+        || (customerFilter === 'active' && customer.is_active !== false)
+        || (customerFilter === 'vip' && Number(customer.loyalty_points || 0) >= 500)
+        || (customerFilter === 'with_points' && Number(customer.loyalty_points || 0) > 0)
+        || (customerFilter === 'no_visit' && !customer.last_visit_at)
+
+      return matchesSearch && matchesFilter
+    })
+  }, [customers, customerFilter, searchTerm])
 
   const handleCreateOrUpdate = async (idOrData, data) => {
     try {
@@ -75,8 +113,8 @@ export default function CRM() {
     if (!confirm("¿Deseas desvincular a este cliente de la red?")) return
     try {
       setActionLoading(true)
-      await deleteCustomer(id)
-      toast.success("Cliente eliminado del CRM")
+      const result = await deleteCustomer(id)
+      toast.success(result?.action === 'deactivated' ? 'Cliente desactivado; conserva historial' : 'Cliente eliminado del CRM')
     } catch (error) {
       toast.error(error.message)
     } finally {
@@ -126,7 +164,40 @@ export default function CRM() {
         setSearchTerm={setSearchTerm}
         onAddCustomer={() => { setEditingCustomer(null); setShowCustomerModal(true); }}
         onAddReservation={() => setShowReservationModal(true)}
+        dashboard={dashboard}
       />
+
+      <section className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <MetricCard icon={Users} label="Clientes activos" value={dashboard.activeCustomers || 0} />
+        <MetricCard icon={Award} label="Puntos en circulacion" value={dashboard.pointsInCirculation || 0} />
+        <MetricCard icon={CalendarClock} label="Reservas proximas" value={dashboard.reservationsUpcoming || 0} />
+        <MetricCard icon={AlertTriangle} label="Alertas de lealtad" value={dashboard.loyaltyAlerts || 0} danger={dashboard.loyaltyAlerts > 0} />
+      </section>
+
+      {activeTab === 'customers' && (
+        <section className="flex flex-wrap gap-2 mb-6">
+          {[
+            ['active', 'Activos'],
+            ['vip', 'VIP'],
+            ['with_points', 'Con puntos'],
+            ['no_visit', 'Sin visita'],
+            ['all', 'Todos']
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setCustomerFilter(id)}
+              className={`px-4 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-colors ${
+                customerFilter === id
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-500 border-slate-200 hover:text-slate-900'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </section>
+      )}
 
       <main className="animate-in fade-in duration-700">
         {activeTab === 'customers' && (
@@ -186,6 +257,20 @@ export default function CRM() {
           loading={actionLoading}
         />
       )}
+    </div>
+  )
+}
+
+function MetricCard({ icon: Icon, label, value, danger = false }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${danger ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-500'}`}>
+        <Icon size={18} />
+      </div>
+      <div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</p>
+        <p className="text-xl font-black text-slate-900">{value}</p>
+      </div>
     </div>
   )
 }

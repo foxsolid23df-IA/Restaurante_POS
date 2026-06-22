@@ -32,7 +32,7 @@ export function useRolePermissions() {
     canViewDashboard: hasPermission(profile, 'access_admin', [ROLES.ADMIN, ROLES.MANAGER]),
     canViewInventory: hasPermission(profile, 'manage_inventory', [ROLES.ADMIN, ROLES.MANAGER]),
     canViewReports: hasPermission(profile, 'view_reports', [ROLES.ADMIN, ROLES.MANAGER]),
-    canViewSettings: role === ROLES.ADMIN,
+    canViewSettings: hasPermission(profile, 'access_admin', [ROLES.ADMIN]),
 
     canEditTableLayout: [ROLES.ADMIN, ROLES.MANAGER].includes(role),
     canManageAllTables: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CASHIER].includes(role),

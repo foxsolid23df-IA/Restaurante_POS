@@ -1,232 +1,166 @@
-import { useState, useEffect } from 'react'
-import { X, Shield, Key, Loader2, Save, Mail, Lock, Copy, Check, Layout, Package, Users as UsersIcon, BarChart3, Trash2, Tag, AlertTriangle } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Check, Copy, KeyRound, Loader2, Mail, Save, Shield, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useBusinessStore } from '@/hooks/useBusinessSettings'
+import {
+  DEFAULT_PERMISSIONS,
+  PERMISSION_LABELS,
+  ROLE_LABELS,
+  ROLE_PERMISSIONS,
+  staffApi
+} from '@/features/staff/api/staffApi'
 
-const DEFAULT_PERMISSIONS = {
-  view_reports: false,
-  manage_inventory: false,
-  manage_staff: false,
-  access_pos: true,
-  access_admin: false,
-  modify_prices: false,
-  delete_orders: false
+function generatePin() {
+  return String(Math.floor(1000 + Math.random() * 9000))
 }
 
-const ADMIN_PERMISSIONS = {
-  view_reports: true,
-  manage_inventory: true,
-  manage_staff: true,
-  access_pos: true,
-  access_admin: true,
-  modify_prices: true,
-  delete_orders: true
+function generatePassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$'
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
-const PERMISSION_LABELS = [
-  { id: 'access_admin', label: 'Acceso Administración', icon: <Layout size={16}/>, color: 'indigo' },
-  { id: 'access_pos', label: 'Acceso Punto de Venta (POS)', icon: <Shield size={16}/>, color: 'emerald' },
-  { id: 'manage_inventory', label: 'Gestión de Inventarios', icon: <Package size={16}/>, color: 'blue' },
-  { id: 'manage_staff', label: 'Gestión de Personal', icon: <UsersIcon size={16}/>, color: 'violet' },
-  { id: 'view_reports', label: 'Reportes Financieros', icon: <BarChart3 size={16}/>, color: 'amber' },
-  { id: 'modify_prices', label: 'Modificar Precios/Descuentos', icon: <Tag size={16}/>, color: 'rose' },
-  { id: 'delete_orders', label: 'Eliminar Órdenes/Cuentas', icon: <Trash2 size={16}/>, color: 'red' },
-]
-
-export default function StaffModal({ user, onClose, onSave }) {
-  const { settings, fetchSettings } = useBusinessStore()
+export default function StaffModal({ user, branches = [], onClose, onSave }) {
+  const inputClass = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900'
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     password: '',
     role: 'waiter',
     pin_code: '',
+    branch_id: '',
     is_active: true,
     permissions: { ...DEFAULT_PERMISSIONS }
   })
   const [loading, setLoading] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
   const [createdData, setCreatedData] = useState(null)
   const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    if (!settings) fetchSettings()
-  }, [settings, fetchSettings])
+  const isEditing = Boolean(user)
 
   useEffect(() => {
     if (user) {
       setFormData({
         full_name: user.full_name || '',
-        email: user.email || '', 
+        email: user.email || '',
         password: '',
         role: user.role || 'waiter',
-        pin_code: user.pin_code || '',
+        pin_code: '',
+        branch_id: user.branch_id || '',
         is_active: user.is_active ?? true,
-        permissions: user.permissions || (user.role === 'admin' ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS })
+        permissions: staffApi.normalizePermissions(user.role, user.permissions)
       })
     } else {
+      const role = 'waiter'
       setFormData({
         full_name: '',
         email: '',
-        password: '',
-        role: 'waiter',
-        pin_code: '',
+        password: generatePassword(),
+        role,
+        pin_code: generatePin(),
+        branch_id: branches[0]?.id || '',
         is_active: true,
-        permissions: { ...DEFAULT_PERMISSIONS }
+        permissions: { ...(ROLE_PERMISSIONS[role] || DEFAULT_PERMISSIONS) }
       })
     }
-  }, [user])
+  }, [user, branches])
+
+  const enabledPermissions = useMemo(
+    () => PERMISSION_LABELS.filter((permission) => formData.permissions?.[permission.id]),
+    [formData.permissions]
+  )
 
   const handleRoleChange = (role) => {
-    const newPermissions = role === 'admin' ? { ...ADMIN_PERMISSIONS } : { ...DEFAULT_PERMISSIONS }
-    setFormData(prev => ({ ...prev, role, permissions: newPermissions }))
+    setFormData((prev) => ({
+      ...prev,
+      role,
+      permissions: { ...(ROLE_PERMISSIONS[role] || DEFAULT_PERMISSIONS) }
+    }))
   }
 
-  const togglePermission = (permId) => {
-    setFormData(prev => ({
+  const togglePermission = (permissionId) => {
+    setFormData((prev) => ({
       ...prev,
       permissions: {
         ...prev.permissions,
-        [permId]: !prev.permissions[permId]
+        [permissionId]: !prev.permissions?.[permissionId]
       }
     }))
   }
 
-  const handleCopyCredentials = () => {
-    const text = `📋 CREDENCIALES DE ACCESO - ${settings?.name || 'Sistema POS'}\n\n` +
-      `👤 Empleado: ${createdData.full_name}\n` +
-      `📧 Email: ${createdData.email}\n` +
-      `🔑 Contraseña: ${createdData.password}\n` +
-      `🔢 PIN POS: ${createdData.pin_code}\n\n` +
-      `Favor de guardar estos datos de forma segura.`;
-    
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success("Credenciales copiadas");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyCredentials = async () => {
+    if (!createdData) return
+    const text = [
+      `Credenciales de acceso - ${createdData.full_name}`,
+      '',
+      `Correo: ${createdData.email}`,
+      `Password temporal: ${createdData.password}`,
+      `PIN POS: ${createdData.pin_code}`,
+      '',
+      'El PIN es solo para POS. El portal administrador requiere correo y password.'
+    ].join('\n')
+
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    toast.success('Credenciales copiadas')
+    setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleDeleteUser = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar permanentemente a este empleado? Esta acción no se puede deshacer.')) return;
-    
-    setDeleting(true)
-    try {
-      const { error } = await supabase.functions.invoke('admin-service', {
-        body: {
-          action: 'delete_user',
-          userId: user.id
-        }
-      })
-
-      if (error) throw error
-      toast.success("Empleado eliminado correctamente");
-      onSave();
-      onClose();
-    } catch (error) {
-      console.error('Error deleting user:', error)
-      toast.error('Error al eliminar: ' + error.message)
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setLoading(true)
 
     try {
-      if (user) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-             full_name: formData.full_name,
-             role: formData.role,
-             pin_code: formData.pin_code,
-             is_active: formData.is_active,
-             permissions: formData.permissions
-          })
-          .eq('id', user.id)
-        
-        if (error) {
-          if (error.message?.includes('profiles_pin_code_key')) {
-             throw new Error('Este código PIN ya está asignado a otro empleado. Por favor usa uno diferente.');
-          }
-          throw error;
-        }
-        
-        toast.success("Perfil y permisos actualizados");
-        onSave();
-        onClose();
-      } else {
-        const { data, error } = await supabase.functions.invoke('admin-service', {
-          body: {
-            action: 'create_user',
-            businessName: settings?.name || "Nuestro Restaurante",
-            userData: {
-              email: formData.email,
-              password: formData.password,
-              full_name: formData.full_name,
-              role: formData.role,
-              pin_code: formData.pin_code,
-              permissions: formData.permissions
-            }
-          }
-        })
+      const payload = {
+        ...formData,
+        full_name: formData.full_name.trim(),
+        email: formData.email.trim(),
+        branch_id: formData.branch_id || null,
+        pin_code: formData.pin_code || undefined
+      }
 
-        if (error) throw error
-        if (data?.error) {
-          if (data.error.includes('already exists') || data.error.includes('duplicate key')) {
-             throw new Error('Ya existe un usuario con este correo electrónico o PIN.');
-          }
-          throw new Error(data.error)
-        }
-        
-        setCreatedData({ ...formData, business_name: settings?.name || "Nuestro Restaurante" });
-        setShowSuccess(true);
+      if (!payload.full_name) throw new Error('El nombre es requerido')
+      if (!isEditing && !payload.email) throw new Error('El correo es requerido')
+      if (!isEditing && !payload.password) throw new Error('El password temporal es requerido')
+      if (!isEditing && !payload.pin_code) throw new Error('El PIN es requerido')
+      if (payload.pin_code && !/^\d{4}$/.test(payload.pin_code)) throw new Error('El PIN debe tener 4 digitos')
+
+      if (isEditing) {
+        await staffApi.updateStaff(user.id, payload)
+        toast.success('Empleado actualizado')
+        onSave()
+      } else {
+        await staffApi.createStaff(payload)
+        setCreatedData(payload)
+        toast.success('Empleado creado')
       }
     } catch (error) {
-      console.error('Error saving user:', error)
-      toast.error(error.message)
+      console.error('Error saving staff:', error)
+      toast.error(error.message || 'Error al guardar empleado')
     } finally {
       setLoading(false)
     }
   }
 
-  if (showSuccess && createdData) {
+  if (createdData) {
     return (
-      <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in zoom-in-95 duration-200">
-        <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
-          <div className="p-10 text-center">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <Check size={40} strokeWidth={3} />
+      <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in zoom-in-95 duration-200">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+          <div className="p-7 text-center">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <Check size={34} strokeWidth={3} />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 mb-2">¡Empleado Registrado!</h2>
-            <p className="text-slate-500 font-medium mb-8 text-sm px-4">Copia estos datos para el empleado.</p>
+            <h2 className="text-2xl font-black text-slate-900 mb-2">Empleado registrado</h2>
+            <p className="text-slate-500 font-medium mb-6 text-sm">Copia estos datos ahora. El PIN no se mostrara de nuevo.</p>
 
-            <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100 space-y-4 text-left mb-8 font-mono">
-                <div className="text-xs break-all">
-                  <span className="text-slate-400">Usuario:</span> <br/>
-                  <span className="text-slate-900 font-bold">{createdData.email}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-xs">
-                    <span className="text-slate-400">Password:</span> <br/>
-                    <span className="text-slate-900 font-bold">{createdData.password}</span>
-                  </div>
-                  <div className="text-xs">
-                    <span className="text-slate-400">PIN POS:</span> <br/>
-                    <span className="text-slate-900 font-bold">{createdData.pin_code}</span>
-                  </div>
-                </div>
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-3 text-left mb-6 font-mono text-sm">
+              <Credential label="Correo" value={createdData.email} />
+              <Credential label="Password" value={createdData.password} />
+              <Credential label="PIN POS" value={createdData.pin_code} />
             </div>
 
-            <button onClick={handleCopyCredentials} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-black transition-all mb-3 text-sm">
-                <Copy size={18} /> {copied ? '¡Copiado!' : 'Copiar Todo'}
+            <button onClick={handleCopyCredentials} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black flex items-center justify-center gap-3 hover:bg-black transition-all mb-2 text-sm">
+              <Copy size={18} /> {copied ? 'Copiado' : 'Copiar credenciales'}
             </button>
-            <button onClick={() => { onSave(); onClose(); }} className="w-full py-4 text-slate-400 font-black hover:text-slate-900 text-[10px] uppercase tracking-widest">
-                Terminar
+            <button onClick={onSave} className="w-full py-3 text-slate-500 font-black hover:text-slate-900 text-xs uppercase tracking-widest">
+              Terminar
             </button>
           </div>
         </div>
@@ -235,198 +169,182 @@ export default function StaffModal({ user, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-[900px] overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
-        <div className="bg-slate-50 border-b border-slate-100 px-10 py-8 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+        <div className="bg-slate-50 border-b border-slate-100 px-6 py-5 flex items-center justify-between shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-              <Shield className="text-primary" size={28} />
-              {user ? 'Configurar Perfil' : 'Registro de Personal'}
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-3">
+              <Shield className="text-primary" size={24} />
+              {isEditing ? 'Editar empleado' : 'Nuevo empleado'}
             </h2>
-            <p className="text-slate-500 font-medium text-sm mt-1">Define roles y permisos específicos</p>
+            <p className="text-slate-500 font-medium text-sm mt-1">Roles, permisos, sucursal y PIN POS.</p>
           </div>
-          <button onClick={onClose} className="bg-white p-3 rounded-full text-slate-400 hover:text-slate-600 shadow-sm border border-slate-100 transition-all">
-            <X size={24} />
+          <button onClick={onClose} className="bg-white p-2 rounded-xl text-slate-500 hover:text-slate-700 shadow-sm border border-slate-100 transition-all" aria-label="Cerrar">
+            <X size={22} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto overflow-x-hidden">
-          <div className="p-10 space-y-12">
-            {/* Sección 1: Datos Básicos */}
-            <div className="space-y-8">
-              <div className="flex items-center gap-3 mb-6">
-                 <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">1</div>
-                 <h3 className="font-black text-slate-900 uppercase tracking-widest text-[11px]">Información de Identidad</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3 block">Nombre Completo</label>
-                    <input
-                      type="text" required value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-slate-900 transition-all"
-                      placeholder="Ej: Juan Pérez"
-                    />
-                 </div>
-                 
-                 {!user && (
-                   <>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3 flex items-center gap-2">
-                        <Mail size={12} /> Correo Electrónico
-                      </label>
-                      <input
-                        type="email" required value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-slate-900 transition-all"
-                        placeholder="email@negocio.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3 flex items-center gap-2">
-                        <Lock size={12} /> Contraseña
-                      </label>
-                      <input
-                        type="password" required value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-slate-900 transition-all"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                   </>
-                 )}
-              </div>
-            </div>
-
-            {/* Sección 2: Rol y PIN */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-               <div>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">2</div>
-                    <h3 className="font-black text-slate-900 uppercase tracking-widest text-[11px]">Rol y Seguridad</h3>
-                  </div>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3 block">Cargo / Puesto</label>
-                      <select
-                        value={formData.role}
-                        onChange={(e) => handleRoleChange(e.target.value)}
-                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-slate-900 cursor-pointer"
-                      >
-                        <option value="admin">Administrador</option>
-                        <option value="manager">Gerente</option>
-                        <option value="waiter">Mesero</option>
-                        <option value="cashier">Cajero</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-3 block">PIN POS (4 dígitos)</label>
-                      <input
-                        type="text" maxLength="4" pattern="\d{4}" required
-                        value={formData.pin_code}
-                        onChange={(e) => setFormData({ ...formData, pin_code: e.target.value.replace(/\D/g, '') })}
-                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-2xl tracking-[0.5em] text-center focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        placeholder="0000"
-                      />
-                    </div>
-                  </div>
-               </div>
-
-               <div>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xs">3</div>
-                    <h3 className="font-black text-slate-900 uppercase tracking-widest text-[11px]">Permisos Granulares</h3>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-[2rem] p-4 border border-slate-100 space-y-2">
-                    {PERMISSION_LABELS.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => togglePermission(p.id)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all border ${
-                          formData.permissions[p.id] 
-                            ? `bg-white border-${p.color}-100 shadow-sm` 
-                            : 'bg-transparent border-transparent grayscale opacity-50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg bg-${p.color}-50 text-${p.color}-600`}>
-                            {p.icon}
-                          </div>
-                          <span className={`text-[11px] font-bold ${formData.permissions[p.id] ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {p.label}
-                          </span>
-                        </div>
-                        <div className={`w-8 h-5 rounded-full relative transition-all ${formData.permissions[p.id] ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                          <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.permissions[p.id] ? 'left-4' : 'left-1'}`} />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-               </div>
-            </div>
-
-            {/* Estado e Interruptor */}
-            <div className="bg-slate-900 rounded-[2rem] p-8 text-white flex items-center justify-between">
-              <div>
-                <p className="font-black flex items-center gap-2">
-                  <Check size={16} className="text-emerald-400" /> Acceso a la Plataforma
-                </p>
-                <p className="text-slate-400 text-xs font-medium mt-1">Activa o bloquea la entrada de este empleado</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" className="sr-only peer"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+        <form onSubmit={handleSubmit} className="overflow-y-auto">
+          <div className="p-6 space-y-6">
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Nombre completo">
+                <input
+                  type="text"
+                  required
+                  value={formData.full_name}
+                  onChange={(event) => setFormData({ ...formData, full_name: event.target.value })}
+                  className={inputClass}
+                  placeholder="Ej: Juan Perez"
                 />
-                <div className="w-14 h-8 bg-slate-700 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-6"></div>
-              </label>
-            </div>
+              </Field>
 
-            {/* Acción de Peligro: Eliminar */}
-            {user && (
-              <div className="pt-8 mt-8 border-t border-slate-100">
-                <div className="bg-rose-50 rounded-[2rem] p-8 border border-rose-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                   <div className="flex items-start gap-4">
-                      <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl">
-                         <AlertTriangle size={24} />
-                      </div>
-                      <div>
-                         <h4 className="font-black text-rose-900">Zona de Riesgo</h4>
-                         <p className="text-rose-700 text-xs font-medium mt-1">Borrar permanentemente este empleado y todos sus registros de acceso.</p>
-                      </div>
-                   </div>
-                   <button
-                     type="button"
-                     onClick={handleDeleteUser}
-                     disabled={deleting}
-                     className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 text-xs uppercase tracking-widest flex items-center gap-2 min-w-[150px] justify-center"
-                   >
-                     {deleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
-                     {deleting ? 'Borrando...' : 'Eliminar Usuario'}
-                   </button>
+              <Field label="Correo electronico" icon={<Mail size={13} />}>
+                <input
+                  type="email"
+                  required={!isEditing}
+                  value={formData.email}
+                  onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                  className={inputClass}
+                  placeholder="email@restaurante.com"
+                />
+              </Field>
+
+              {!isEditing && (
+                <Field label="Password temporal">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={formData.password}
+                      onChange={(event) => setFormData({ ...formData, password: event.target.value })}
+                      className={inputClass}
+                    />
+                    <button type="button" onClick={() => setFormData({ ...formData, password: generatePassword() })} className="px-3 rounded-xl bg-slate-100 font-black text-xs">
+                      Generar
+                    </button>
+                  </div>
+                </Field>
+              )}
+
+              <Field label={isEditing ? 'Nuevo PIN POS (opcional)' : 'PIN POS'}>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength="4"
+                    required={!isEditing}
+                    value={formData.pin_code}
+                    onChange={(event) => setFormData({ ...formData, pin_code: event.target.value.replace(/\D/g, '') })}
+                    className={`${inputClass} text-center font-black tracking-[0.45em]`}
+                    placeholder={isEditing ? '----' : '0000'}
+                  />
+                  <button type="button" onClick={() => setFormData({ ...formData, pin_code: generatePin() })} className="px-3 rounded-xl bg-slate-100 font-black text-xs flex items-center gap-2">
+                    <KeyRound size={14} />
+                    Generar
+                  </button>
                 </div>
+                {isEditing && <p className="text-xs text-slate-500 mt-2">Dejalo vacio para conservar el PIN actual.</p>}
+              </Field>
+
+              <Field label="Rol">
+                <select value={formData.role} onChange={(event) => handleRoleChange(event.target.value)} className={inputClass}>
+                  {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                    <option key={role} value={role}>{label}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Sucursal">
+                <select value={formData.branch_id} onChange={(event) => setFormData({ ...formData, branch_id: event.target.value })} className={inputClass}>
+                  <option value="">Sin sucursal fija</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </Field>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="font-black text-slate-900">Permisos granulares</h3>
+                  <p className="text-xs text-slate-500 font-semibold">{enabledPermissions.length} permisos activos</p>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-black text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-emerald-600"
+                    checked={formData.is_active}
+                    onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })}
+                  />
+                  Activo
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {PERMISSION_LABELS.map((permission) => (
+                  <button
+                    key={permission.id}
+                    type="button"
+                    onClick={() => togglePermission(permission.id)}
+                    className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
+                      formData.permissions?.[permission.id]
+                        ? 'bg-white border-emerald-200 text-slate-900 shadow-sm'
+                        : 'bg-transparent border-transparent text-slate-400'
+                    }`}
+                  >
+                    <span className="text-sm font-black">{permission.label}</span>
+                    <span className={`h-5 w-9 rounded-full relative ${formData.permissions?.[permission.id] ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                      <span className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-all ${formData.permissions?.[permission.id] ? 'left-5' : 'left-1'}`} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {formData.permissions?.access_admin && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 flex gap-3">
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                <p className="text-sm font-semibold">Este empleado podra entrar al portal administrador solo con sesion real por correo y password.</p>
               </div>
             )}
           </div>
 
-          <div className="p-10 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0 mt-auto">
-            <button type="button" onClick={onClose} className="flex-1 px-8 py-5 text-slate-500 font-black hover:bg-white rounded-2xl transition-all uppercase tracking-widest text-[11px]">
+          <div className="p-5 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+            <button type="button" onClick={onClose} className="flex-1 px-5 py-3 text-slate-600 font-black hover:bg-white rounded-xl transition-all text-sm">
               Cancelar
             </button>
             <button
-              type="submit" disabled={loading}
-              className="flex-[2] bg-slate-900 text-white px-8 py-5 rounded-2xl font-black hover:bg-black shadow-2xl shadow-slate-200 disabled:opacity-50 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[11px]"
+              type="submit"
+              disabled={loading}
+              className="flex-[2] bg-slate-900 text-white px-5 py-3 rounded-xl font-black hover:bg-black shadow-lg disabled:opacity-60 transition-all flex items-center justify-center gap-2 text-sm"
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              {user ? 'Guardar Cambios' : 'Finalizar Registro'}
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {isEditing ? 'Guardar cambios' : 'Crear empleado'}
             </button>
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+function Field({ label, icon, children }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      {children}
+    </label>
+  )
+}
+
+function Credential({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="font-black text-slate-900 break-all">{value}</p>
     </div>
   )
 }

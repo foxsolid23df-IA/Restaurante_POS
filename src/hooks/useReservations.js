@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { crmApi } from '@/features/crm/api/crmApi'
 import { useBranchStore } from '@/store/branchStore'
 
 export function useReservations() {
@@ -9,101 +9,43 @@ export function useReservations() {
   const { currentBranch } = useBranchStore()
 
   const fetchReservations = useCallback(async (dateFilters = {}) => {
-    if (!currentBranch?.id) return
+    if (!currentBranch?.id) {
+      setReservations([])
+      return []
+    }
+
     setLoading(true)
     setError(null)
+
     try {
-      let query = supabase
-        .from('reservations')
-        .select(`
-          *,
-          customers(name, phone, email),
-          tables(name, capacity, area_id)
-        `)
-        .eq('branch_id', currentBranch.id)
-        .order('reservation_date', { ascending: true })
-
-      if (dateFilters.startDate) {
-        query = query.gte('reservation_date', dateFilters.startDate)
-      }
-      if (dateFilters.endDate) {
-        query = query.lte('reservation_date', dateFilters.endDate)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setReservations(data || [])
+      const rows = await crmApi.getReservations(currentBranch.id, dateFilters)
+      setReservations(rows)
+      return rows
     } catch (err) {
       console.error('Error fetching reservations:', err)
       setError(err.message)
+      return []
     } finally {
       setLoading(false)
     }
   }, [currentBranch?.id])
 
-  // Verificar disponibilidad futura (MOVIDO ARRIBA PARA EVITAR REFERENCE ERROR)
-  const checkTableAvailability = useCallback(async (tableId, date, duration) => {
-    try {
-      const startTime = new Date(date)
-      const endTime = new Date(startTime.getTime() + duration * 60000)
-
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('reservation_date, duration_minutes')
-        .eq('table_id', tableId)
-        .not('status', 'eq', 'cancelled')
-
-      if (error) throw error
-
-      const hasConflict = data.some(res => {
-        const resStart = new Date(res.reservation_date)
-        const resEnd = new Date(resStart.getTime() + (res.duration_minutes || 120) * 60000)
-        
-        return (startTime < resEnd && endTime > resStart)
-      })
-
-      return !hasConflict
-    } catch (err) {
-      console.error('Error checking availability:', err)
-      return false
-    }
-  }, [])
+  const checkTableAvailability = useCallback((tableId, date, duration, reservationId = null) => (
+    crmApi.checkTableAvailability({
+      tableId,
+      reservationDate: date,
+      durationMinutes: duration,
+      reservationId
+    })
+  ), [])
 
   const createReservation = useCallback(async (reservationData) => {
-    if (!currentBranch?.id) throw new Error('No se ha seleccionado una sucursal')
     setLoading(true)
     setError(null)
+
     try {
-      // 1. Verificar disponibilidad si se asignó mesa
-      if (reservationData.table_id) {
-        const isAvailable = await checkTableAvailability(
-          reservationData.table_id, 
-          reservationData.reservation_date, 
-          reservationData.duration_minutes || 120
-        )
-        
-        if (!isAvailable) {
-          throw new Error('Lo sentimos, esta mesa ya tiene una reservación para ese horario.')
-        }
-      }
-
-      const { data, error } = await supabase
-        .from('reservations')
-        .insert([{
-          ...reservationData,
-          branch_id: currentBranch.id,
-          duration_minutes: reservationData.duration_minutes || 120, // Default 2h
-        }])
-        .select(`
-          *,
-          customers(name, phone, email),
-          tables(name)
-        `)
-        .single()
-
-      if (error) throw error
-      setReservations(prev => [...prev, data])
+      const data = await crmApi.createReservation(reservationData, currentBranch?.id)
+      setReservations((prev) => [...prev, data])
       return data
     } catch (err) {
       console.error('Error creating reservation:', err)
@@ -112,35 +54,24 @@ export function useReservations() {
     } finally {
       setLoading(false)
     }
-  }, [currentBranch?.id, checkTableAvailability])
+  }, [currentBranch?.id])
 
   const updateReservationStatus = useCallback(async (id, status) => {
+    setLoading(true)
+    setError(null)
+
     try {
-      const { data, error } = await supabase
-        .from('reservations')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      
-      // Si el estado es 'seated', podríamos marcar la mesa como ocupada
-      if (status === 'seated' && data.table_id) {
-        await supabase
-          .from('tables')
-          .update({ status: 'occupied' })
-          .eq('id', data.table_id)
-      }
-
-      setReservations(prev => prev.map(r => r.id === id ? { ...r, status: data.status } : r))
+      const data = await crmApi.updateReservationStatus(id, status)
+      setReservations((prev) => prev.map((reservation) => (
+        reservation.id === id ? { ...reservation, ...data } : reservation
+      )))
       return data
     } catch (err) {
       console.error('Error updating reservation status:', err)
+      setError(err.message)
       throw err
+    } finally {
+      setLoading(false)
     }
   }, [])
 

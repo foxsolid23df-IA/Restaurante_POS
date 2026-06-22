@@ -7,8 +7,7 @@ import { useOrders } from '@/hooks/useOrders'
 import { useTables } from '@/hooks/useTables'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useComandaPrinter } from '@/hooks/useComandaPrinter'
-import { Clock, TrendingUp, Users, ShoppingCart, UserCircle, ChevronDown, Check, Search } from 'lucide-react'
-import PaymentModal from './components/PaymentModal'
+import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search } from 'lucide-react'
 import InventoryAlerts from './components/InventoryAlerts'
 import CategoryFilter from '@/components/POS/CategoryFilter'
 import ProductGrid from '@/components/POS/ProductGrid'
@@ -24,7 +23,6 @@ function POSContent() {
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
   
   const { 
     cart, addToCart, removeFromCart, updateQuantity, clearCurrentCart,
@@ -61,8 +59,15 @@ function POSContent() {
     }
   }, [selectedTable, cart?.id, cart?.table_id, setTable])
 
+  useEffect(() => {
+    if (selectedCategory !== 'all' && !categories.some((category) => category.id === selectedCategory)) {
+      setSelectedCategory('all')
+    }
+  }, [categories, selectedCategory])
+
   const handleAddToCart = (product) => {
     addToCart({
+      product_id: product.id,
       name: product.name,
       price: parseFloat(product.price),
       quantity: 1,
@@ -279,4 +284,3 @@ export default function POS() {
     </Suspense>
   )
 }
-

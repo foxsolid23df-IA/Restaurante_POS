@@ -1,6 +1,25 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { branchApi, normalizeBranch } from '@/features/branches/api/branchApi'
+
+const scopeBranchesForProfile = (branches, profile) => {
+  if (!profile?.branch_id || profile?.role === 'admin') return branches
+  return branches.filter((branch) => branch.id === profile.branch_id)
+}
+
+const pickCurrentBranch = ({ branches, currentBranch, profile }) => {
+  const scopedBranches = scopeBranchesForProfile(branches, profile)
+  if (profile?.branch_id) {
+    return scopedBranches.find((branch) => branch.id === profile.branch_id) || null
+  }
+
+  if (currentBranch?.id) {
+    const persisted = scopedBranches.find((branch) => branch.id === currentBranch.id)
+    if (persisted) return persisted
+  }
+
+  return scopedBranches[0] || null
+}
 
 export const useBranchStore = create(
   persist(
@@ -14,20 +33,14 @@ export const useBranchStore = create(
       fetchBranches: async () => {
         set({ loading: true })
         try {
-          const { data, error } = await supabase
-            .from('branches')
-            .select('*')
-            .eq('is_active', true)
-          
-          if (error) throw error
-          
-          set({ branches: data || [], loading: false })
-          
-          // If no branch is selected and we have branches, set the first one as default
-          // unless the profile dictates otherwise (handled in initialize)
-          if (!get().currentBranch && data?.length > 0) {
-            set({ currentBranch: data[0] })
-          }
+          const branches = await branchApi.getBranches()
+          const currentBranch = pickCurrentBranch({
+            branches,
+            currentBranch: get().currentBranch,
+            profile: null
+          })
+
+          set({ branches, currentBranch, loading: false, error: null })
         } catch (err) {
           set({ error: err.message, loading: false })
         }
@@ -35,39 +48,30 @@ export const useBranchStore = create(
 
       // Set current branch manually (for admins)
       setCurrentBranch: (branch) => {
-        set({ currentBranch: branch })
+        set({ currentBranch: branch ? normalizeBranch(branch) : null })
       },
 
       // Initialization logic called after auth
       initializeBranch: async (profile) => {
         set({ loading: true })
         try {
-          // 1. Fetch branches
-          const { data: branches, error } = await supabase
-            .from('branches')
-            .select('*')
-            .eq('is_active', true)
-          
-          if (error) throw error
-          set({ branches: branches || [] })
+          const branches = await branchApi.getBranches()
+          const scopedBranches = scopeBranchesForProfile(branches, profile)
+          const currentBranch = pickCurrentBranch({
+            branches,
+            currentBranch: get().currentBranch,
+            profile
+          })
 
-          // 2. Determine which branch to set
-          // If profile has a fixed branch, use that.
-          if (profile?.branch_id) {
-            const profileBranch = branches.find(b => b.id === profile.branch_id)
-            if (profileBranch) {
-              set({ currentBranch: profileBranch })
-            }
-          } 
-          // If no current branch is set in store yet, use first one
-          else if (!get().currentBranch && branches.length > 0) {
-            set({ currentBranch: branches[0] })
-          }
-
-          set({ loading: false })
+          set({
+            branches: scopedBranches,
+            currentBranch,
+            loading: false,
+            error: null
+          })
         } catch (err) {
           console.error('Error initializing branch:', err)
-          set({ loading: false })
+          set({ error: err.message, loading: false })
         }
       }
     }),

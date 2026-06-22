@@ -1,466 +1,244 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useBranchStore } from '@/store/branchStore'
+import { salonApi } from '@/features/salon/api/salonApi'
 
-// Hook principal
 export function useTables() {
+  const { currentBranch } = useBranchStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [tables, setTables] = useState([])
   const [areas, setAreas] = useState([])
   const [selectedArea, setSelectedArea] = useState(null)
-  const { currentBranch } = useBranchStore()
+  const [metrics, setMetrics] = useState({
+    total: 0,
+    available: 0,
+    occupied: 0,
+    reserved: 0,
+    maintenance: 0,
+    totalCapacity: 0,
+    occupiedCapacity: 0,
+    utilizationRate: 0
+  })
 
-  // Obtener todas las áreas
+  const loadLayout = useCallback(async () => {
+    if (!currentBranch?.id) {
+      setAreas([])
+      setTables([])
+      setMetrics({
+        total: 0,
+        available: 0,
+        occupied: 0,
+        reserved: 0,
+        maintenance: 0,
+        totalCapacity: 0,
+        occupiedCapacity: 0,
+        utilizationRate: 0
+      })
+      return { areas: [], tables: [], error: null }
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      const layout = await salonApi.getLayout(currentBranch.id)
+      setAreas(layout.areas)
+      setTables(layout.tables)
+      setMetrics(layout.metrics)
+      return { ...layout, error: null }
+    } catch (err) {
+      const message = err.message || 'Error al cargar el salon'
+      setError(message)
+      return { areas: [], tables: [], error: message }
+    } finally {
+      setLoading(false)
+    }
+  }, [currentBranch?.id])
+
   const fetchAreas = useCallback(async () => {
-    if (!currentBranch?.id) return
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const { data, error } = await supabase
-        .from('areas')
-        .select('*')
-        .eq('branch_id', currentBranch.id)
-        .order('name')
+    const result = await loadLayout()
+    return { areas: result.areas || [], error: result.error || null }
+  }, [loadLayout])
 
-      if (error) throw error
-
-      setAreas(data || [])
-      return { areas: data || [], error: null }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al cargar áreas'
-      setError(errorMessage)
-      return { areas: [], error: errorMessage }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Obtener todas las mesas
   const fetchTables = useCallback(async (filters = {}) => {
-    if (!currentBranch?.id) return
-    setLoading(true)
-    setError(null)
-    
-    try {
-      let query = supabase
-        .from('tables')
-        .select(`*`)
-        .eq('branch_id', currentBranch.id)
-        .order('name')
+    const result = await loadLayout()
+    let nextTables = result.tables || []
+    if (filters.area_id) nextTables = nextTables.filter((table) => table.area_id === filters.area_id)
+    if (filters.status) nextTables = nextTables.filter((table) => table.status === filters.status)
+    if (filters.capacity_min) nextTables = nextTables.filter((table) => table.capacity >= filters.capacity_min)
+    if (filters.capacity_max) nextTables = nextTables.filter((table) => table.capacity <= filters.capacity_max)
+    return { tables: nextTables, error: result.error || null }
+  }, [loadLayout])
 
-      // Aplicar filtros
-      if (filters.area_id) {
-        query = query.eq('area_id', filters.area_id)
-      }
-      if (filters.status) {
-        query = query.eq('status', filters.status)
-      }
-      if (filters.capacity_min) {
-        query = query.gte('capacity', filters.capacity_min)
-      }
-      if (filters.capacity_max) {
-        query = query.lte('capacity', filters.capacity_max)
-      }
+  const fetchTablesByArea = useCallback((areaId) => fetchTables({ area_id: areaId }), [fetchTables])
 
-      const { data, error } = await query
-
-      if (error) throw error
-
-      const tablesWithOrders = await Promise.all(
-        (data || []).map(async (table) => {
-          // Obtener orden activa de la mesa
-          const { data: activeOrder } = await supabase
-            .from('orders')
-            .select('id, status, created_at, total_amount')
-            .eq('table_id', table.id)
-            .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-          return {
-            ...table,
-            current_order: activeOrder
-          }
-        })
-      )
-
-      setTables(tablesWithOrders)
-      return { tables: tablesWithOrders, error: null }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al cargar mesas'
-      setError(errorMessage)
-      return { tables: [], error: errorMessage }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Obtener mesas por área
-  const fetchTablesByArea = useCallback(async (areaId) => {
-    return fetchTables({ area_id: areaId })
-  }, [fetchTables])
-
-  // Crear nueva área
   const createArea = useCallback(async (areaData) => {
     setLoading(true)
     setError(null)
-    
     try {
-      if (!currentBranch?.id) {
-        throw new Error('No hay una sucursal seleccionada. Por favor selecciona una sucursal primero.')
-      }
-
-      const { data, error } = await supabase
-        .from('areas')
-        .insert({
-          ...areaData,
-          branch_id: currentBranch.id
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setAreas(prev => [...prev, data])
-      return { area: data, error: null }
+      const area = await salonApi.saveArea(areaData, currentBranch?.id)
+      await loadLayout()
+      return { area, error: null }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al crear área'
-      setError(errorMessage)
-      return { area: null, error: errorMessage }
+      const message = err.message || 'Error al crear area'
+      setError(message)
+      return { area: null, error: message }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id, loadLayout])
 
-  // Actualizar área
   const updateArea = useCallback(async (areaId, updates) => {
     setLoading(true)
     setError(null)
-    
     try {
-      const { data, error } = await supabase
-        .from('areas')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', areaId)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setAreas(prev => 
-        prev.map(area => 
-          area.id === areaId ? { ...area, ...data } : area
-        )
-      )
-
-      return { area: data, error: null }
+      const existing = areas.find((area) => area.id === areaId) || {}
+      const area = await salonApi.saveArea({ ...existing, ...updates, id: areaId }, currentBranch?.id)
+      await loadLayout()
+      return { area, error: null }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al actualizar área'
-      setError(errorMessage)
-      return { area: null, error: errorMessage }
+      const message = err.message || 'Error al actualizar area'
+      setError(message)
+      return { area: null, error: message }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [areas, currentBranch?.id, loadLayout])
 
-  // Eliminar área
   const deleteArea = useCallback(async (areaId) => {
     setLoading(true)
     setError(null)
-    
     try {
-      // Verificar que no haya mesas asociadas
-      const { data: tablesCount } = await supabase
-        .from('tables')
-        .select('id', { count: 'exact' })
-        .eq('area_id', areaId)
-
-      if (tablesCount && tablesCount.length > 0) {
-        throw new Error('No se puede eliminar el área porque tiene mesas asociadas')
-      }
-
-      const { error } = await supabase
-        .from('areas')
-        .delete()
-        .eq('id', areaId)
-
-      if (error) throw error
-
-      setAreas(prev => prev.filter(area => area.id !== areaId))
+      await salonApi.deactivateArea(areaId)
+      await loadLayout()
       return { success: true, error: null }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al eliminar área'
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
+      const message = err.message || 'Error al desactivar area'
+      setError(message)
+      return { success: false, error: message }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [loadLayout])
 
-  // Crear nueva mesa
-
-
-  // Actualizar mesa
-  const updateTable = useCallback(async (tableId, updates) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      // Limpiar datos virtuales que no existen en la DB para evitar PGRST204
-      const { current_order, areas, ...cleanUpdates } = updates
-
-      const { data, error } = await supabase
-        .from('tables')
-        .update(cleanUpdates)
-        .eq('id', tableId)
-        .select(`
-          *
-        `)
-        .single()
-
-      if (error) {
-        console.error('Supabase updateTable error:', error)
-        throw error
-      }
-
-      setTables(prev => 
-        prev.map(table => 
-          table.id === tableId ? { ...table, ...data } : table
-        )
-      )
-
-      return { table: data, error: null }
-    } catch (err) {
-      console.error('Catch updateTable error:', err)
-      const errorMessage = err.message || 'Error al actualizar mesa'
-      const errorCode = err.code || 'unknown'
-      setError(`${errorMessage} (${errorCode})`)
-      return { table: null, error: `${errorMessage} (${errorCode})` }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Similar detail for createArea/createTable
   const createTable = useCallback(async (tableData) => {
     setLoading(true)
     setError(null)
-    
     try {
-      if (!currentBranch?.id) {
-        throw new Error('No hay una sucursal seleccionada')
-      }
-
-      // Limpiar datos virtuales
-      const { current_order, areas, ...cleanData } = tableData
-
-      const { data, error } = await supabase
-        .from('tables')
-        .insert({
-          ...cleanData,
-          branch_id: currentBranch.id,
-          status: 'available'
-        })
-        .select(`*`)
-        .single()
-
-      if (error) {
-        console.error('Supabase createTable error:', error)
-        throw error
-      }
-
-      setTables(prev => [...prev, data])
-      return { table: data, error: null }
+      const table = await salonApi.saveTable(tableData, currentBranch?.id)
+      await loadLayout()
+      return { table, error: null }
     } catch (err) {
-      console.error('Catch createTable error:', err)
-      const errorMessage = err.message || 'Error al crear mesa'
-      setError(`${errorMessage} (${err.code || ''})`)
-      return { table: null, error: `${errorMessage} (${err.code || ''})` }
+      const message = err.message || 'Error al crear mesa'
+      setError(message)
+      return { table: null, error: message }
     } finally {
       setLoading(false)
     }
-  }, [currentBranch])
+  }, [currentBranch?.id, loadLayout])
 
-  // Eliminar mesa
+  const updateTable = useCallback(async (tableId, updates) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const existing = tables.find((table) => table.id === tableId) || {}
+      const table = await salonApi.saveTable({ ...existing, ...updates, id: tableId }, currentBranch?.id)
+      await loadLayout()
+      return { table, error: null }
+    } catch (err) {
+      const message = err.message || 'Error al actualizar mesa'
+      setError(message)
+      return { table: null, error: message }
+    } finally {
+      setLoading(false)
+    }
+  }, [currentBranch?.id, loadLayout, tables])
+
+  const updateTablePosition = useCallback(async (tableId, position) => {
+    try {
+      const table = await salonApi.updateTablePosition(tableId, position)
+      setTables((prev) => prev.map((row) => (row.id === tableId ? { ...row, ...table } : row)))
+      return { table, error: null }
+    } catch (err) {
+      const message = err.message || 'Error al guardar posicion'
+      setError(message)
+      return { table: null, error: message }
+    }
+  }, [])
+
   const deleteTable = useCallback(async (tableId) => {
     setLoading(true)
     setError(null)
-    
     try {
-      // Verificar que no haya órdenes activas
-      const { data: activeOrders } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact' })
-        .eq('table_id', tableId)
-        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
-
-      if (activeOrders && activeOrders.length > 0) {
-        throw new Error('No se puede eliminar la mesa porque tiene órdenes activas')
-      }
-
-      const { error } = await supabase
-        .from('tables')
-        .delete()
-        .eq('id', tableId)
-
-      if (error) throw error
-
-      setTables(prev => prev.filter(table => table.id !== tableId))
+      await salonApi.deactivateTable(tableId)
+      await loadLayout()
       return { success: true, error: null }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al eliminar mesa'
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
+      const message = err.message || 'Error al desactivar mesa'
+      setError(message)
+      return { success: false, error: message }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [loadLayout])
 
-  // Ocupar mesa
-  const occupyTable = useCallback(async (tableId) => {
-    return updateTable(tableId, { status: 'occupied' })
-  }, [updateTable])
-
-  // Liberar mesa
-  const releaseTable = useCallback(async (tableId) => {
-    return updateTable(tableId, { status: 'available' })
-  }, [updateTable])
-
-  // Reservar mesa
-  const reserveTable = useCallback(async (tableId) => {
-    return updateTable(tableId, { status: 'reserved' })
-  }, [updateTable])
-
-  // Obtener mesa por ID
-  const getTableById = useCallback(async (tableId) => {
-    setLoading(true)
-    setError(null)
-    
+  const setTableStatus = useCallback(async (tableId, status) => {
     try {
-      const { data, error } = await supabase
-        .from('tables')
-        .select(`*`)
-        .eq('id', tableId)
-        .single()
-
-      if (error) throw error
-
-      // Obtener orden activa
-      const { data: activeOrder } = await supabase
-        .from('orders')
-        .select('id, status, created_at, total_amount')
-        .eq('table_id', tableId)
-        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      const tableWithOrder = {
-        ...data,
-        current_order: activeOrder
-      }
-
-      return { table: tableWithOrder, error: null }
+      const table = await salonApi.setTableStatus(tableId, status)
+      await loadLayout()
+      return { table, error: null }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al obtener mesa'
-      setError(errorMessage)
-      return { table: null, error: errorMessage }
-    } finally {
-      setLoading(false)
+      const message = err.message || 'Error al cambiar estado de mesa'
+      setError(message)
+      return { table: null, error: message }
     }
-  }, [])
+  }, [loadLayout])
 
-  // Obtener mesas disponibles
+  const occupyTable = useCallback((tableId) => setTableStatus(tableId, 'occupied'), [setTableStatus])
+  const releaseTable = useCallback((tableId) => setTableStatus(tableId, 'available'), [setTableStatus])
+  const reserveTable = useCallback((tableId) => setTableStatus(tableId, 'reserved'), [setTableStatus])
+
+  const getTableById = useCallback(async (tableId) => {
+    const table = tables.find((row) => row.id === tableId)
+    return { table: table || null, error: table ? null : 'Mesa no encontrada' }
+  }, [tables])
+
   const getAvailableTables = useCallback(async (capacity) => {
-    const filters = { status: 'available' }
-    if (capacity) {
-      filters.capacity_min = capacity
-    }
-    return fetchTables(filters)
-  }, [fetchTables])
+    const availableTables = tables.filter((table) => (
+      table.status === 'available' && (!capacity || table.capacity >= capacity)
+    ))
+    return { tables: availableTables, error: null }
+  }, [tables])
 
-  // Cargar datos iniciales
   useEffect(() => {
-    fetchAreas()
-    fetchTables()
-  }, [fetchAreas, fetchTables])
+    loadLayout()
+  }, [loadLayout])
 
-  // Suscripción en tiempo real para cambios en mesas
   useEffect(() => {
+    if (!currentBranch?.id) return undefined
+
     const channel = supabase
-      .channel('tables_changes')
+      .channel(`tables_changes_${currentBranch.id}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tables'
-        },
-        async (payload) => {
-          console.log('Cambio en mesas detectado:', payload)
-          
-          if (payload.new?.id) {
-            const { table } = await getTableById(payload.new.id)
-            if (table) {
-              setTables(prev => {
-                const existingIndex = prev.findIndex(t => t.id === table.id)
-                if (existingIndex >= 0) {
-                  const updated = [...prev]
-                  updated[existingIndex] = table
-                  return updated
-                }
-                return [...prev, table]
-              })
-            }
-          }
-          
-          if (payload.eventType === 'DELETE' && payload.old?.id) {
-            setTables(prev => prev.filter(t => t.id !== payload.old.id))
-          }
-        }
+        { event: '*', schema: 'public', table: 'tables' },
+        () => loadLayout()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'areas' },
+        () => loadLayout()
       )
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [getTableById])
+  }, [currentBranch?.id, loadLayout])
 
-  // Mesas filtradas por área seleccionada
-  const filteredTables = selectedArea 
-    ? tables.filter(table => table.area_id === selectedArea)
+  const filteredTables = selectedArea
+    ? tables.filter((table) => table.area_id === selectedArea)
     : tables
-
-  // Métricas útiles
-  const metrics = useMemo(() => {
-    const total = tables.length
-    const available = tables.filter(t => t.status === 'available').length
-    const occupied = tables.filter(t => t.status === 'occupied').length
-    const reserved = tables.filter(t => t.status === 'reserved').length
-    const maintenance = tables.filter(t => t.status === 'maintenance').length
-    
-    const totalCapacity = tables.reduce((sum, table) => sum + table.capacity, 0)
-    const occupiedCapacity = tables
-      .filter(t => t.status === 'occupied')
-      .reduce((sum, table) => sum + table.capacity, 0)
-
-    return {
-      total,
-      available,
-      occupied,
-      reserved,
-      maintenance,
-      totalCapacity,
-      occupiedCapacity,
-      utilizationRate: totalCapacity > 0 ? (occupiedCapacity / totalCapacity) * 100 : 0
-    }
-  }, [tables])
 
   return {
     loading,
@@ -479,32 +257,32 @@ export function useTables() {
     fetchTablesByArea,
     createTable,
     updateTable,
+    updateTablePosition,
     deleteTable,
     getTableById,
     getAvailableTables,
     occupyTable,
     releaseTable,
-    reserveTable
+    reserveTable,
+    loadLayout
   }
 }
 
-// Selectores personalizados
 export const useTablesByArea = (areaId) => {
   const tables = useTables().tables
-  return tables.filter(table => table.area_id === areaId)
+  return tables.filter((table) => table.area_id === areaId)
 }
 
 export const useAvailableTables = () => {
   const tables = useTables().tables
-  return tables.filter(table => table.status === 'available')
+  return tables.filter((table) => table.status === 'available')
 }
 
 export const useOccupiedTables = () => {
   const tables = useTables().tables
-  return tables.filter(table => table.status === 'occupied')
+  return tables.filter((table) => table.status === 'occupied')
 }
 
-// Helper functions
 export const formatTableStatus = (status) => {
   const statusMap = {
     available: 'Disponible',
@@ -527,12 +305,12 @@ export const getStatusColorClass = (status) => {
 
 export const getTableIcon = (status) => {
   const iconMap = {
-    available: '✅',
-    occupied: '🔴',
-    reserved: '🟡',
-    maintenance: '⚙️'
+    available: 'OK',
+    occupied: 'OC',
+    reserved: 'RS',
+    maintenance: 'MT'
   }
-  return iconMap[status] || '📍'
+  return iconMap[status] || 'MS'
 }
 
 export default useTables

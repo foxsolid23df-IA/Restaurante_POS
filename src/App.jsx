@@ -41,7 +41,7 @@ const adminRoutePermissions = [
   { prefix: '/admin/inventory', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager'] },
   { prefix: '/admin/purchases', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager', 'cashier'] },
   { prefix: '/admin/staff', permission: 'manage_staff', fallbackRoles: ['admin'] },
-  { prefix: '/admin/settings', permission: null, fallbackRoles: ['admin'] },
+  { prefix: '/admin/settings', permission: 'access_admin', fallbackRoles: ['admin'] },
   { prefix: '/admin/branches', permission: null, fallbackRoles: ['admin'] },
   { prefix: '/admin', permission: 'access_admin', fallbackRoles: ['admin', 'manager'] }
 ]
@@ -74,6 +74,10 @@ function ProtectedRoute({ allowedRoles, requireSession = false, useAdminPermissi
   if (allowedRoles && !allowedRoles.includes(profile?.role)) {
     if (window.location.pathname === '/pos' || window.location.pathname === '/pos/') return null;
     return <Navigate to="/pos" replace />
+  }
+
+  if (location.pathname.startsWith('/pos') && !hasPermission(profile, 'access_pos', allowedRoles || [])) {
+    return <Navigate to="/pin-login" replace />
   }
 
   if (useAdminPermissions) {

@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { X, Save, Loader2, Printer } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, Save, Loader2, Printer, LayoutGrid } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useMenus } from '@/hooks/useMenus'
-import { LayoutGrid } from 'lucide-react'
+import { catalogApi } from '@/features/catalog/api/catalogApi'
 
 export default function CategoryModal({ category, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -31,170 +30,136 @@ export default function CategoryModal({ category, onClose, onSave }) {
   }, [category])
 
   const loadInitialData = async () => {
+    setFetchingData(true)
     try {
-      const [printers, menus] = await Promise.all([
-        getPrinters(),
-        fetchMenus()
-      ])
+      const [printers, menus] = await Promise.all([getPrinters(), fetchMenus()])
       setPrintersList(printers || [])
       setMenusList(menus || [])
     } catch (error) {
       console.error('Error loading data:', error)
-      toast.error('Error al cargar datos')
+      toast.error('Error al cargar impresoras y menus')
     } finally {
       setFetchingData(false)
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setLoading(true)
 
-    if (!formData.name.trim()) {
-      toast.error('El nombre es requerido')
-      setLoading(false)
-      return
-    }
-
     try {
-      const dataToSubmit = {
-        name: formData.name.trim(),
-        printer_id: formData.printer_id || null,
-        menu_id: formData.menu_id || null
-      }
-
-      if (category) {
-        const { error } = await supabase
-          .from('categories')
-          .update(dataToSubmit)
-          .eq('id', category.id)
-        if (error) throw error
-        toast.success('Categoría actualizada')
-      } else {
-        const { error } = await supabase
-          .from('categories')
-          .insert([dataToSubmit])
-        if (error) throw error
-        toast.success('Categoría creada')
-      }
-
+      await catalogApi.saveCategory({ ...formData, id: category?.id })
+      toast.success(category ? 'Categoria actualizada' : 'Categoria creada')
       onSave()
     } catch (error) {
       console.error('Error saving category:', error)
-      toast.error(`Error: ${error.message}`)
+      toast.error(error.message || 'Error al guardar categoria')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden">
-        <div className="bg-slate-50 border-b border-slate-100 px-8 py-6 flex items-center justify-between">
+    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden">
+        <div className="bg-slate-50 border-b border-slate-100 px-6 py-5 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black text-slate-900">
-              {category ? 'Editar Categoría' : 'Nueva Categoría'}
+              {category ? 'Editar categoria' : 'Nueva categoria'}
             </h2>
-            <p className="text-slate-500 font-medium text-xs uppercase tracking-wide">
-              {category ? 'Modificar datos existentes' : 'Crear nueva agrupación'}
+            <p className="text-slate-500 font-medium text-sm">
+              Horario visible en POS e impresora de produccion.
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 bg-white hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors shadow-sm"
+            className="p-2 bg-white hover:bg-slate-100 rounded-xl text-slate-500 transition-colors shadow-sm"
+            aria-label="Cerrar"
           >
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
-              Nombre de Categoría
+            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
+              Nombre de categoria
             </label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900 placeholder:text-slate-300 transition-all text-lg"
-              placeholder="Ej: Principales"
+              onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900"
+              placeholder="Ej: Bebidas"
               required
             />
           </div>
 
           <div>
-             <div className="flex justify-between items-center mb-3">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
-                  Vincular a Menú (Horarios)
-                </label>
-                {fetchingData && <Loader2 size={12} className="animate-spin text-primary" />}
-             </div>
-            
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">
+                Menu / horario
+              </label>
+              {fetchingData && <Loader2 size={13} className="animate-spin text-primary" />}
+            </div>
             <div className="relative">
-               <LayoutGrid className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-               <select
-                 value={formData.menu_id}
-                 onChange={(e) => setFormData({ ...formData, menu_id: e.target.value })}
-                 className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900 transition-all appearance-none cursor-pointer"
-               >
-                 <option value="">Disponible siempre (Sin Horario)</option>
-                 {menusList.map(m => (
-                   <option key={m.id} value={m.id}>{m.name}</option>
-                 ))}
-               </select>
+              <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <select
+                value={formData.menu_id}
+                onChange={(event) => setFormData({ ...formData, menu_id: event.target.value })}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900"
+              >
+                <option value="">Siempre disponible</option>
+                {menusList.map((menu) => (
+                  <option key={menu.id} value={menu.id}>{menu.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div>
-             <div className="flex justify-between items-center mb-3">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
-                  Enrutar a Impresora
-                </label>
-                {fetchingData && <Loader2 size={12} className="animate-spin text-primary" />}
-             </div>
-            
-            <div className="relative">
-               <Printer className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-               <select
-                 value={formData.printer_id}
-                 onChange={(e) => setFormData({ ...formData, printer_id: e.target.value })}
-                 className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900 transition-all appearance-none cursor-pointer"
-               >
-                 <option value="">No imprimir comandas</option>
-                 {printersList.map(p => (
-                   <option key={p.id} value={p.id}>{p.name} ({p.ip_address})</option>
-                 ))}
-               </select>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">
+                Impresora / zona
+              </label>
+              {fetchingData && <Loader2 size={13} className="animate-spin text-primary" />}
             </div>
-            <p className="text-[10px] font-medium bg-blue-50/50 p-3 rounded-xl border border-blue-50 text-blue-500 mt-4 leading-relaxed">
-              * Las comandas de esta categoría se enviarán automáticamente a la zona de producción seleccionada.
+            <div className="relative">
+              <Printer className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <select
+                value={formData.printer_id}
+                onChange={(event) => setFormData({ ...formData, printer_id: event.target.value })}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900"
+              >
+                <option value="">Sin impresora asignada</option>
+                {printersList.map((printer) => (
+                  <option key={printer.id} value={printer.id}>
+                    {printer.name}{printer.ip_address ? ` (${printer.ip_address})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs font-medium bg-blue-50 p-3 rounded-xl border border-blue-100 text-blue-700 mt-3 leading-relaxed">
+              Las comandas de esta categoria se enviaran a la zona seleccionada cuando exista impresora configurada.
             </p>
           </div>
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-4 border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 transition-colors font-bold text-sm"
+              className="flex-1 px-5 py-3 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-bold text-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-4 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all font-bold text-sm shadow-xl flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="flex-1 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-black transition-all font-bold text-sm shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  Guardando...
-                </>
-              ) : (
-                <>
-                  <Save size={20} />
-                  Guardar
-                </>
-              )}
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              Guardar
             </button>
           </div>
         </form>

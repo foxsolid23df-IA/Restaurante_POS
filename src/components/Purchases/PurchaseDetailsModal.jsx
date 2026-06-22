@@ -1,108 +1,122 @@
-import { X, Package, Hash, Weight, DollarSign, Calendar, Truck } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Calendar, CheckCircle2, DollarSign, Package, Truck, X, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { usePurchases } from '@/hooks/usePurchases'
 
-export default function PurchaseDetailsModal({ purchase, onClose }) {
+export default function PurchaseDetailsModal({ purchase, onClose, onReceive, onCancel }) {
   const { getPurchaseDetails, loading } = usePurchases()
   const [items, setItems] = useState([])
 
   useEffect(() => {
-    if (purchase?.id) {
-      loadDetails()
-    }
-  }, [purchase])
+    if (purchase?.id) loadDetails()
+  }, [purchase?.id])
 
   const loadDetails = async () => {
     const data = await getPurchaseDetails(purchase.id)
     setItems(data || [])
   }
 
+  const canReceive = ['draft', 'ordered', 'partial', 'pending'].includes(purchase.status)
+  const canCancel = ['draft', 'ordered', 'pending'].includes(purchase.status)
+
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[3rem] p-10 max-w-3xl w-full shadow-2xl relative overflow-hidden border border-white/20">
-        <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-           <Truck size={150} />
-        </div>
-        
-        <div className="flex justify-between items-start mb-10 relative z-10">
+    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <div className="bg-white rounded-xl max-w-4xl w-full shadow-2xl border border-white/20 max-h-[90vh] overflow-hidden flex flex-col">
+        <header className="p-5 border-b border-slate-200 flex items-start justify-between">
           <div>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">Detalles de Compra</h3>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-slate-200">
+            <h3 className="text-2xl font-black text-slate-950">Detalles de compra</h3>
+            <div className="flex flex-wrap gap-2 mt-2 text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg">
                 Folio: {purchase.invoice_number || 'S/N'}
               </span>
-              <span className="text-slate-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-                <Calendar size={14} />
-                {new Date(purchase.purchase_date).toLocaleDateString()}
+              <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg">
+                <Calendar size={12} /> {new Date(purchase.purchase_date).toLocaleDateString('es-MX')}
+              </span>
+              <span className="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg">
+                Estado: {purchase.status}
               </span>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="bg-slate-50 p-4 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all shadow-sm"
-          >
-            <X size={28} />
+          <button onClick={onClose} className="p-3 bg-slate-50 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600">
+            <X size={22} />
           </button>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 relative z-10 bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100">
-           <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-2">Proveedor</p>
-              <p className="text-xl font-black text-slate-900 uppercase leading-none">{purchase.suppliers?.name}</p>
-              <p className="text-xs text-primary font-black uppercase tracking-widest mt-2">{purchase.suppliers?.category}</p>
-           </div>
-           <div className="text-right">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-2">Importe Neto</p>
-              <p className="text-4xl font-black text-slate-900 tracking-tighter leading-none">${parseFloat(purchase.total_amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">IVA 16% Incluido</p>
-           </div>
-        </div>
+        <main className="p-5 overflow-y-auto">
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+            <div className="bg-slate-50 rounded-lg p-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Proveedor</p>
+              <p className="text-lg font-black text-slate-950 flex items-center gap-2">
+                <Truck size={18} /> {purchase.suppliers?.name || 'Sin proveedor'}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">{purchase.suppliers?.category || 'Sin categoría'}</p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-4 text-right">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide mb-2">Importe</p>
+              <p className="text-3xl font-black text-slate-950 flex items-center justify-end gap-1">
+                <DollarSign size={18} /> {Number(purchase.total_amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">IVA estimado incluido</p>
+            </div>
+          </section>
 
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6 px-2">
-            <Package size={20} className="text-primary" />
-            <h4 className="font-black text-slate-900 uppercase text-xs tracking-[0.2em]">Insumos Registrados</h4>
-          </div>
-
-          <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-            {loading ? (
-              <div className="py-12 text-center text-slate-300">Cargando detalles...</div>
-            ) : items.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 uppercase text-[10px] font-black tracking-widest bg-slate-50 rounded-3xl border border-dashed border-slate-200">Sin detalles encontrados</div>
-            ) : (
-              items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-100 group hover:border-blue-100 transition-all shadow-sm">
-                  <div className="flex-1">
-                    <p className="font-black text-slate-900 uppercase text-sm tracking-tight">{item.inventory_items?.name}</p>
-                    <div className="flex items-center gap-4 mt-1">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                        <Weight size={10} /> {item.quantity} {item.inventory_items?.unit}
-                      </span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                        <DollarSign size={10} /> ${parseFloat(item.unit_cost).toFixed(2)} / ud
-                      </span>
+          <section>
+            <h4 className="font-black text-slate-950 mb-3 flex items-center gap-2">
+              <Package size={18} />
+              Partidas
+            </h4>
+            <div className="space-y-2">
+              {loading ? (
+                <div className="py-12 text-center text-slate-400">Cargando detalles...</div>
+              ) : items.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 border border-dashed border-slate-200 rounded-lg">Sin partidas encontradas</div>
+              ) : (
+                items.map((item) => {
+                  const quantity = Number(item.quantity || 0)
+                  const received = Number(item.received_quantity || 0)
+                  return (
+                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_120px_120px_120px] gap-3 items-center border border-slate-200 rounded-lg p-3">
+                      <div>
+                        <p className="font-black text-slate-950">{item.inventory_items?.name}</p>
+                        <p className="text-xs text-slate-500">{item.inventory_items?.unit}</p>
+                      </div>
+                      <Metric label="Pedido" value={quantity.toFixed(2)} />
+                      <Metric label="Recibido" value={received.toFixed(2)} />
+                      <Metric label="Pendiente" value={Math.max(0, quantity - received).toFixed(2)} />
                     </div>
-                  </div>
-                  <div className="text-right pl-6">
-                    <p className="text-lg font-black text-slate-900 tracking-tighter">
-                      ${parseFloat(item.total_cost || (item.quantity * item.unit_cost)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+                  )
+                })
+              )}
+            </div>
+          </section>
+        </main>
 
-        <div className="mt-10 pt-8 border-t border-slate-100 relative z-10">
-           <button 
-             onClick={onClose}
-             className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all"
-           >
-             Cerrar Detalles
-           </button>
-        </div>
+        <footer className="p-5 border-t border-slate-200 flex flex-col sm:flex-row gap-2 justify-end">
+          {canCancel && onCancel && (
+            <button onClick={() => onCancel(purchase)} className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-rose-50 text-rose-600 text-xs font-black uppercase">
+              <XCircle size={16} />
+              Cancelar
+            </button>
+          )}
+          {canReceive && onReceive && (
+            <button onClick={() => onReceive(purchase)} className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-white text-xs font-black uppercase">
+              <CheckCircle2 size={16} />
+              Recibir completo
+            </button>
+          )}
+          <button onClick={onClose} className="px-4 py-3 rounded-lg bg-slate-900 text-white text-xs font-black uppercase">
+            Cerrar
+          </button>
+        </footer>
       </div>
+    </div>
+  )
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="text-right">
+      <p className="text-[10px] font-black uppercase text-slate-400">{label}</p>
+      <p className="font-black text-slate-950">{value}</p>
     </div>
   )
 }

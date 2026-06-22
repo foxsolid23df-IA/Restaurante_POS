@@ -1,63 +1,36 @@
-import { TrendingDown, ChevronRight } from 'lucide-react'
+import { ChevronRight, TrendingDown } from 'lucide-react'
 
 export default function CriticalStockAlerts({ items, onReorder }) {
   if (items.length === 0) return null
 
   return (
-    <section className="mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-rose-100 p-2 rounded-xl text-rose-600">
-          <TrendingDown size={24} />
-        </div>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Alertas de Abastecimiento</h2>
+    <section className="mb-5 bg-white border border-rose-200 rounded-lg overflow-hidden">
+      <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center gap-2 text-rose-800">
+        <TrendingDown size={18} />
+        <h2 className="font-black">Stock crítico</h2>
+        <span className="text-xs font-black bg-white border border-rose-200 rounded-full px-2 py-0.5">{items.length}</span>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {items.map(item => {
-          const percentage = Math.min(100, (item.current_stock / item.min_stock) * 100)
+
+      <div className="divide-y divide-rose-100">
+        {items.slice(0, 6).map((item) => {
+          const minStock = Number(item.min_stock || 0)
+          const currentStock = Number(item.current_stock || 0)
+          const percentage = minStock > 0 ? Math.min(100, (currentStock / minStock) * 100) : 0
+
           return (
-            <div 
-              key={item.id} 
-              className="bg-white p-8 rounded-[3rem] border-2 border-rose-50 shadow-2xl shadow-rose-100/30 flex flex-col justify-between group hover:border-rose-200 transition-all duration-300"
-            >
+            <div key={item.id} className="p-4 grid grid-cols-1 md:grid-cols-[1fr_180px_auto] gap-3 items-center">
               <div>
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-black text-slate-900 text-xl leading-tight group-hover:text-rose-600 transition-colors">{item.name}</h3>
-                </div>
-                
-                <div className="flex items-center gap-2 mb-6">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100">
-                    Nivel Crítico
-                  </span>
-                </div>
-                
-                <div className="space-y-4 mb-2">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Disponible</p>
-                      <p className="text-2xl font-black text-rose-600 tracking-tight">
-                        {item.current_stock} <span className="text-sm uppercase opacity-60 ml-1">{item.unit}</span>
-                      </p>
-                    </div>
-                    <p className="text-xs font-black text-slate-400">Min: {item.min_stock}</p>
-                  </div>
-                  
-                  <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-50">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                        percentage < 25 ? 'bg-rose-600' : percentage < 50 ? 'bg-amber-500' : 'bg-rose-400'
-                      }`}
-                      style={{ width: `${percentage}%` }} 
-                    />
-                  </div>
-                </div>
+                <p className="font-black text-slate-950">{item.name}</p>
+                <p className="text-sm text-slate-500">Disponible: {currentStock.toFixed(2)} {item.unit} · Mínimo: {minStock.toFixed(2)} {item.unit}</p>
               </div>
-              
-              <button 
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-rose-600" style={{ width: `${percentage}%` }} />
+              </div>
+              <button
                 onClick={() => onReorder(item)}
-                className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
+                className="h-9 px-3 bg-slate-950 text-white rounded-md font-black text-xs uppercase tracking-wide inline-flex items-center justify-center gap-1"
               >
-                Reabastecer Ahora
+                Reabastecer
                 <ChevronRight size={14} />
               </button>
             </div>

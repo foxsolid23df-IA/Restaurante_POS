@@ -1,342 +1,355 @@
-import { Suspense, useState, useMemo, useEffect } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Plus, 
-  LayoutGrid, 
-  List, 
-  X, 
-  Printer, 
-  Utensils, 
-  Users,
-  Clock,
-  Bell,
-  ChefHat,
-  ArrowRight,
-  TrendingUp
-} from 'lucide-react'
 import { clsx } from 'clsx'
-import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/store/authStore'
-import { useRolePermissions } from '@/hooks/useRolePermissions'
+import {
+  Clock,
+  Grid3X3,
+  List,
+  Loader2,
+  Plus,
+  Receipt,
+  Table2,
+  Users,
+  X
+} from 'lucide-react'
+import { useBranchStore } from '@/store/branchStore'
+import { tablesApi } from '@/features/pos/api/tablesApi'
 import { useTablesData } from '@/features/pos/hooks/useTablesData'
+
+const currency = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN'
+})
 
 function TablesContent() {
   const navigate = useNavigate()
-  const { profile } = useAuthStore()
-  const { canEditTableLayout, canCheckout } = useRolePermissions()
-  const { areas, tables, metrics } = useTablesData()
-
-  const [selectedAreaId, setSelectedAreaId] = useState(areas[0]?.id)
+  const { currentBranch } = useBranchStore()
+  const { areas, tables, metrics, branchId } = useTablesData()
+  const [selectedAreaId, setSelectedAreaId] = useState(areas[0]?.id || null)
   const [viewMode, setViewMode] = useState('map')
   const [selectedTable, setSelectedTable] = useState(null)
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false)
-  const [orderDetails, setOrderDetails] = useState(null)
+  const [orderDetails, setOrderDetails] = useState([])
   const [loadingOrder, setLoadingOrder] = useState(false)
 
-  const activeAreaName = areas.find(a => a.id === selectedAreaId)?.name || 'General'
+  const activeAreaId = selectedAreaId && areas.some((area) => area.id === selectedAreaId)
+    ? selectedAreaId
+    : areas[0]?.id || null
 
-  const tablesToDisplay = useMemo(() => {
-    return selectedAreaId
-      ? tables.filter(t => t.area_id === selectedAreaId)
-      : tables
-  }, [tables, selectedAreaId])
+  const tablesToDisplay = useMemo(() => (
+    activeAreaId ? tables.filter((table) => table.area_id === activeAreaId) : tables
+  ), [activeAreaId, tables])
 
-  const fetchOrderDetails = async (orderId) => {
-    setLoadingOrder(true)
+  const activeArea = areas.find((area) => area.id === activeAreaId)
+
+  const openTable = async (table) => {
+    setSelectedTable(table)
+    setOrderDetails([])
+    if (!table.current_order?.id) return
+
     try {
-      const { data, error } = await supabase
-        .from('order_items')
-        .select('*, products(name, price)')
-        .eq('order_id', orderId)
-      if (error) throw error
-      setOrderDetails(data || [])
-    } catch (error) {
-      console.error('Error fetching order items:', error)
+      setLoadingOrder(true)
+      const rows = await tablesApi.getOrderDetails(table.current_order.id)
+      setOrderDetails(rows)
     } finally {
       setLoadingOrder(false)
     }
   }
 
-  const handleTableClick = (table) => {
-    setSelectedTable(table)
-    setIsSidePanelOpen(true)
-    if (table.current_order) {
-      fetchOrderDetails(table.current_order.id)
-    } else {
-      setOrderDetails(null)
-    }
+  const goToOrder = (table) => {
+    navigate('/pos/orders', { state: { table } })
+  }
+
+  if (!branchId) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-50 p-8">
+        <EmptyState
+          title="Selecciona una sucursal"
+          description="Las mesas del POS se cargan por sucursal para evitar mezclar ordenes y reservas."
+        />
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] font-sans overflow-hidden">
-      {/* Premium Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-10 py-8">
+    <div className="flex h-full flex-col overflow-hidden bg-slate-50 font-sans">
+      <header className="flex flex-col gap-4 border-b border-slate-200 bg-white px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="h-1.5 w-1.5 bg-secondary rounded-full animate-pulse" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Salón en Tiempo Real</p>
-          </div>
-          <h1 className="text-4xl font-black text-primary tracking-tight font-display uppercase">Gestión de Mesas</h1>
+          <p className="text-xs font-black uppercase tracking-widest text-blue-600">Salon en tiempo real</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Gestion de mesas</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">{currentBranch?.name || 'Sucursal actual'}</p>
         </div>
-
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-          <div className="flex px-2 border-r border-slate-100 mr-2">
-            {areas.map(area => (
-              <button
-                key={area.id}
-                onClick={() => setSelectedAreaId(area.id)}
-                className={clsx(
-                  "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all",
-                  selectedAreaId === area.id 
-                    ? "bg-primary text-white shadow-lg shadow-slate-900/10" 
-                    : "text-slate-500 hover:bg-slate-50"
-                )}
-              >
-                {area.name}
-              </button>
-            ))}
-          </div>
-          
-          <div className="flex gap-1">
-            <button
-              onClick={() => setViewMode('map')}
-              className={clsx(
-                "p-2.5 rounded-xl transition-all",
-                viewMode === 'map' ? "bg-secondary text-white shadow-lg shadow-blue-600/20" : "text-slate-400 hover:bg-slate-50"
-              )}
-            >
-              <LayoutGrid size={18} strokeWidth={2.5} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={clsx(
-                "p-2.5 rounded-xl transition-all",
-                viewMode === 'list' ? "bg-secondary text-white shadow-lg shadow-blue-600/20" : "text-slate-400 hover:bg-slate-50"
-              )}
-            >
-              <List size={18} strokeWidth={2.5} />
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewButton icon={Grid3X3} active={viewMode === 'map'} onClick={() => setViewMode('map')} />
+          <ViewButton icon={List} active={viewMode === 'list'} onClick={() => setViewMode('list')} />
         </div>
-      </div>
+      </header>
 
-      {/* Metrics Banner */}
-      <div className="px-10 mb-6 flex gap-8">
-        <MetricItem label="Ocupadas" value={metrics.occupied} color="rose" />
-        <MetricItem label="Libres" value={metrics.free} color="success" />
-        <MetricItem label="Reservadas" value={metrics.reserved} color="warning" />
-      </div>
+      <section className="grid grid-cols-2 gap-3 px-5 py-4 md:grid-cols-5 lg:px-8">
+        <Metric label="Total" value={metrics.total} />
+        <Metric label="Libres" value={metrics.free} tone="good" />
+        <Metric label="Ocupadas" value={metrics.occupied} tone="danger" />
+        <Metric label="Reservadas" value={metrics.reserved} tone="warn" />
+        <Metric label="Mantenimiento" value={metrics.maintenance} />
+      </section>
 
-      {/* Main Grid View */}
-      <div className="flex-1 overflow-y-auto px-10 pb-10 custom-scrollbar">
-        <div className="premium-card bg-white p-12 min-h-full relative overflow-hidden">
-          <div className="absolute top-10 right-10 flex items-center gap-3 text-slate-300 font-bold text-xs uppercase tracking-widest">
-            <TrendingUp size={16} /> Sector {activeAreaName}
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-12 max-w-7xl mx-auto py-10 opacity-0 animate-in fade-in duration-700 fill-mode-forwards">
-            {tablesToDisplay.map((table) => (
-              <TableCard 
-                key={table.id} 
-                table={table} 
-                onClick={() => handleTableClick(table)}
-              />
-            ))}
-          </div>
-
-          {/* Decor: Floor Elements */}
-          <div className="absolute bottom-10 left-10 text-[10px] font-black text-slate-200 uppercase tracking-[0.5em] flex items-center gap-4">
-            <ArrowRight size={12} /> Entrada Principal
-          </div>
-        </div>
-      </div>
-
-      {/* Side Panel Drawer */}
-      <aside className={clsx(
-        "fixed top-0 right-0 w-full max-w-md h-full bg-white shadow-2xl z-[100] flex flex-col transition-all duration-500 transform ease-in-out",
-        isSidePanelOpen ? "translate-x-0" : "translate-x-full"
-      )}>
-        {selectedTable && (
-          <div className="flex flex-col h-full">
-            <div className="p-8 border-b border-slate-50">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-4xl font-black text-primary tracking-tight font-display uppercase">{selectedTable.name}</h3>
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">
-                    {activeAreaName} • {selectedTable.capacity} Personas
-                  </p>
-                </div>
-                <button onClick={() => setIsSidePanelOpen(false)} className="p-2 text-slate-300 hover:text-primary transition-colors">
-                  <X size={28} />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                <div className="flex items-center gap-3">
-                  <div className={clsx(
-                    "h-3 w-3 rounded-full animate-pulse",
-                    selectedTable.status === 'occupied' ? "bg-rose-500" : "bg-success"
-                  )} />
-                  <span className="font-black text-primary uppercase text-xs tracking-wider">
-                    {selectedTable.status === 'occupied' ? 'Ocupada' : 'Disponible'}
-                  </span>
-                </div>
-                {selectedTable.status === 'occupied' && (
-                  <span className="font-mono font-bold text-slate-400">52:14 min</span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8 space-y-8">
-              {selectedTable.status === 'occupied' ? (
-                <>
-                  <div>
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Detalle del Pedido</h4>
-                    <div className="space-y-6">
-                      {loadingOrder ? (
-                         <div className="flex justify-center p-4"><div className="w-6 h-6 border-2 border-secondary border-t-transparent animate-spin rounded-full" /></div>
-                      ) : orderDetails?.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center group">
-                          <div className="flex gap-4">
-                            <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-secondary transition-colors">
-                              <ChefHat size={20} strokeWidth={2.5} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-primary text-sm leading-none mb-1">{item.quantity}x {item.products?.name}</p>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{item.notes || 'Preparación Estándar'}</p>
-                            </div>
-                          </div>
-                          <p className="font-black text-primary tracking-tighter">${(item.quantity * item.products?.price).toFixed(2)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                    <div className="flex items-center gap-2 mb-2 text-secondary">
-                      <Bell size={16} strokeWidth={3} />
-                      <p className="font-black text-[10px] uppercase tracking-wider">Requerimientos Especiales</p>
-                    </div>
-                    <p className="text-slate-500 text-xs font-medium leading-relaxed italic">
-                      "Sin cebolla en la ensalada, el cliente es alérgico. Agua sin hielo."
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center py-20">
-                  <div className="w-20 h-20 bg-emerald-50 text-success rounded-3xl flex items-center justify-center mb-6">
-                    <Utensils size={32} strokeWidth={2.5} />
-                  </div>
-                  <h4 className="text-xl font-black text-primary mb-2 font-display uppercase tracking-tight">Mesa Lista</h4>
-                  <p className="text-slate-400 text-sm font-medium px-10">Asigna comensales para iniciar la toma de orden</p>
-                </div>
-              )}
-            </div>
-
-            <div className="p-8 border-t border-slate-50 bg-white shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
-              {selectedTable.status === 'occupied' && (
-                <div className="flex justify-between items-end mb-8">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Acumulado</p>
-                  <p className="text-4xl font-black text-primary tracking-tighter font-display">${selectedTable.current_order?.total_amount?.toFixed(2)}</p>
-                </div>
-              )}
-              
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => navigate('/pos/orders', { state: { table: selectedTable } })}
-                  className={clsx(
-                    "w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all scale-100 hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-3",
-                    selectedTable.status === 'occupied' ? "bg-secondary text-white shadow-blue-600/20" : "bg-primary text-white shadow-slate-900/10"
-                  )}
-                >
-                  {selectedTable.status === 'occupied' ? <><Printer size={18} strokeWidth={3} /> Cerrar Cuenta</> : <><Plus size={18} strokeWidth={3} /> Iniciar Orden</>}
-                </button>
-                
-                <button 
-                   onClick={() => navigate('/pos/orders', { state: { table: selectedTable, addProduct: true } })}
-                   className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors border border-slate-100"
-                >
-                  Control de Servicio
-                </button>
-              </div>
-            </div>
-          </div>
+      <section className="flex flex-wrap gap-2 px-5 pb-4 lg:px-8">
+        {areas.length ? areas.map((area) => (
+          <button
+            key={area.id}
+            type="button"
+            onClick={() => setSelectedAreaId(area.id)}
+            className={clsx(
+              'rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition',
+              activeAreaId === area.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            {area.name}
+          </button>
+        )) : (
+          <span className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-500">
+            Sin areas configuradas
+          </span>
         )}
-      </aside>
+      </section>
 
-      {/* Overlay */}
-      {isSidePanelOpen && (
-        <div onClick={() => setIsSidePanelOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] animate-in fade-in duration-300" />
+      <main className="min-h-0 flex-1 overflow-auto px-5 pb-6 lg:px-8">
+        <div className="min-h-full rounded-xl border border-slate-200 bg-white p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">{activeArea?.name || 'Todas las mesas'}</h2>
+              <p className="text-sm font-medium text-slate-500">{tablesToDisplay.length} mesas disponibles en esta vista</p>
+            </div>
+          </div>
+
+          {!tablesToDisplay.length ? (
+            <EmptyState title="Sin mesas" description="Configura mesas desde Arquitectura de Salon en el administrador." />
+          ) : viewMode === 'list' ? (
+            <div className="divide-y divide-slate-100">
+              {tablesToDisplay.map((table) => (
+                <TableRow key={table.id} table={table} onClick={() => openTable(table)} />
+              ))}
+            </div>
+          ) : (
+            <div className="relative min-h-[620px] rounded-xl bg-slate-50"
+              style={{
+                backgroundImage: 'linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)',
+                backgroundSize: '32px 32px'
+              }}
+            >
+              {tablesToDisplay.map((table) => (
+                <TableNode key={table.id} table={table} onClick={() => openTable(table)} />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {selectedTable && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedTable(null)} />
+          <aside className="fixed right-0 top-0 z-[90] flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+            <header className="border-b border-slate-100 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-blue-600">{activeArea?.name || 'Salon'}</p>
+                  <h2 className="mt-1 text-3xl font-black text-slate-900">{selectedTable.name}</h2>
+                  <p className="mt-1 text-sm font-medium text-slate-500">{selectedTable.capacity} personas</p>
+                </div>
+                <button type="button" onClick={() => setSelectedTable(null)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                  <X size={22} />
+                </button>
+              </div>
+              <div className="mt-5">
+                <StatusBadge status={selectedTable.status} />
+              </div>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              {selectedTable.current_order ? (
+                <div className="space-y-5">
+                  <InfoCard icon={Receipt} label="Orden activa" value={selectedTable.current_order.id?.slice(0, 8)} />
+                  <InfoCard icon={Clock} label="Abierta desde" value={formatTime(selectedTable.current_order.created_at)} />
+                  <InfoCard icon={Users} label="Mesero" value={selectedTable.current_order.user_name || 'Sin asignar'} />
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">Consumo</p>
+                    <p className="mt-1 text-3xl font-black text-slate-900">{currency.format(Number(selectedTable.current_order.total_amount || 0))}</p>
+                  </div>
+
+                  <section className="rounded-xl border border-slate-200">
+                    <header className="border-b border-slate-100 px-4 py-3">
+                      <h3 className="text-sm font-black text-slate-900">Detalle</h3>
+                    </header>
+                    {loadingOrder ? (
+                      <div className="flex justify-center p-8">
+                        <Loader2 className="animate-spin text-blue-600" />
+                      </div>
+                    ) : orderDetails.length ? (
+                      <div className="divide-y divide-slate-100">
+                        {orderDetails.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                            <div>
+                              <p className="text-sm font-black text-slate-900">{item.quantity}x {item.products?.name || 'Producto'}</p>
+                              <p className="text-xs font-medium text-slate-500">{item.notes || 'Sin notas'}</p>
+                            </div>
+                            <p className="text-sm font-black text-slate-700">{currency.format(Number(item.quantity || 0) * Number(item.products?.price || item.price_at_order || 0))}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="p-4 text-sm font-medium text-slate-500">Sin detalle de productos.</p>
+                    )}
+                  </section>
+                </div>
+              ) : (
+                <EmptyState title="Mesa lista" description="Inicia una orden para comenzar el servicio." compact />
+              )}
+
+              {selectedTable.next_reservation && (
+                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                  <p className="text-xs font-black uppercase tracking-widest">Reserva proxima</p>
+                  <p className="mt-1 text-sm font-bold">{selectedTable.next_reservation.customer_name || 'Cliente'} - {formatTime(selectedTable.next_reservation.reservation_date)}</p>
+                </div>
+              )}
+            </div>
+
+            <footer className="border-t border-slate-100 p-6">
+              <button
+                type="button"
+                onClick={() => goToOrder(selectedTable)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-4 text-sm font-black text-white hover:bg-black"
+              >
+                <Plus size={18} />
+                {selectedTable.current_order ? 'Abrir orden' : 'Iniciar orden'}
+              </button>
+            </footer>
+          </aside>
+        </>
       )}
     </div>
   )
 }
 
-function MetricItem({ label, value, color }) {
-  const colors = {
-    rose: "bg-rose-50 text-rose-600",
-    success: "bg-emerald-50 text-success",
-    warning: "bg-amber-50 text-warning",
-  }
+function ViewButton({ icon: Icon, active, onClick }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className={clsx("px-3 py-1 rounded-lg font-black text-xs", colors[color])}>{value}</div>
-      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx('rounded-xl p-3 transition', active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}
+    >
+      <Icon size={18} />
+    </button>
+  )
+}
+
+function Metric({ label, value, tone = 'neutral' }) {
+  const toneClass = {
+    neutral: 'bg-white text-slate-900 border-slate-200',
+    good: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    danger: 'bg-red-50 text-red-700 border-red-100',
+    warn: 'bg-amber-50 text-amber-700 border-amber-100'
+  }[tone]
+  return (
+    <div className={`rounded-xl border p-4 ${toneClass}`}>
+      <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
     </div>
   )
 }
 
-function TableCard({ table, onClick }) {
-  const isOccupied = table.status === 'occupied'
-  const isReserved = table.status === 'reserved'
-
+function TableNode({ table, onClick }) {
   return (
-    <button 
+    <button
+      type="button"
       onClick={onClick}
-      className="group flex flex-col items-center gap-6 cursor-pointer outline-none focus:ring-0"
+      className={clsx(
+        'absolute flex flex-col items-center justify-center border-2 shadow-sm transition hover:-translate-y-1 hover:shadow-md',
+        table.shape === 'circle' ? 'h-24 w-24 rounded-full' : table.shape === 'square' ? 'h-24 w-24 rounded-xl' : 'h-24 w-36 rounded-2xl',
+        tableTone(table.status)
+      )}
+      style={{
+        top: `${table.y_pos}%`,
+        left: `${table.x_pos}%`,
+        transform: `rotate(${table.rotation || 0}deg)`
+      }}
     >
-      <div className={clsx(
-        "w-36 h-36 rounded-[2.5rem] border-4 flex flex-col items-center justify-center p-6 relative transition-all duration-500 group-hover:-translate-y-2",
-        isOccupied 
-          ? "bg-white border-rose-500 shadow-xl shadow-rose-500/10" 
-          : isReserved
-            ? "bg-white border-warning"
-            : "bg-slate-50 border-success group-hover:bg-white group-hover:shadow-xl group-hover:shadow-emerald-500/5 shadow-inner"
-      )}>
-        <span className="text-3xl font-black text-primary tracking-tighter font-display">{table.name}</span>
-        
-        {/* Status indicator */}
-        <div className="absolute -top-3 px-3 py-1 bg-white border border-slate-50 rounded-full shadow-sm flex items-center gap-1.5">
-          <div className={clsx(
-            "w-2 h-2 rounded-full",
-            isOccupied ? "bg-rose-500" : isReserved ? "bg-warning" : "bg-success"
-          )} />
-          <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400 leading-none">
-            {isOccupied ? 'Ocupado' : isReserved ? 'Reserva' : 'Libre'}
-          </span>
-        </div>
-
-        {/* Capacity dots */}
-        <div className="absolute -bottom-3 flex gap-1 bg-white px-2 py-1 rounded-full border border-slate-50">
-          {[...Array(Math.min(table.capacity, 4))].map((_, i) => (
-            <div key={i} className={clsx(
-              "w-2 h-2 rounded-full",
-              isOccupied ? "bg-rose-200" : "bg-slate-200"
-            )} />
-          ))}
-        </div>
-      </div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-primary transition-colors">Sector Barra</p>
+      <Table2 size={18} />
+      <span className="mt-1 text-lg font-black leading-none">{table.name}</span>
+      <span className="mt-1 text-[10px] font-black uppercase tracking-widest">{table.capacity} pax</span>
     </button>
   )
+}
+
+function TableRow({ table, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center justify-between px-4 py-4 text-left hover:bg-slate-50">
+      <div>
+        <p className="font-black text-slate-900">{table.name}</p>
+        <p className="text-sm font-medium text-slate-500">{table.areas?.name || 'Sin area'} - {table.capacity} personas</p>
+      </div>
+      <StatusBadge status={table.status} />
+    </button>
+  )
+}
+
+function StatusBadge({ status }) {
+  const labels = {
+    available: 'Disponible',
+    occupied: 'Ocupada',
+    reserved: 'Reservada',
+    maintenance: 'Mantenimiento'
+  }
+  return <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-widest ${tableTone(status)}`}>{labels[status] || status}</span>
+}
+
+function tableTone(status) {
+  return {
+    available: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+    occupied: 'border-red-300 bg-red-50 text-red-800',
+    reserved: 'border-amber-300 bg-amber-50 text-amber-800',
+    maintenance: 'border-slate-300 bg-slate-100 text-slate-700'
+  }[status] || 'border-slate-300 bg-white text-slate-700'
+}
+
+function InfoCard({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
+      <div className="rounded-xl bg-slate-100 p-3 text-slate-600"><Icon size={18} /></div>
+      <div>
+        <p className="text-xs font-black uppercase tracking-widest text-slate-500">{label}</p>
+        <p className="font-black text-slate-900">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ title, description, compact = false }) {
+  return (
+    <div className={clsx('flex items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center', compact ? 'min-h-48' : 'min-h-[420px]')}>
+      <div>
+        <Table2 className="mx-auto mb-3 text-slate-300" size={34} />
+        <h2 className="font-black text-slate-900">{title}</h2>
+        <p className="mt-2 max-w-md text-sm font-medium text-slate-500">{description}</p>
+      </div>
+    </div>
+  )
+}
+
+function formatTime(value) {
+  if (!value) return 'Sin fecha'
+  return new Date(value).toLocaleString('es-MX', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 export default function Tables() {
   return (
     <Suspense fallback={
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#f8fafc]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary/10 border-t-secondary mb-4" />
-        <p className="font-black text-slate-400 animate-pulse uppercase tracking-[0.2em] text-[10px]">Generando Plano...</p>
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="mb-4 animate-spin text-blue-600" size={38} />
+        <p className="text-xs font-black uppercase tracking-widest text-slate-500">Cargando salon</p>
       </div>
     }>
       <TablesContent />

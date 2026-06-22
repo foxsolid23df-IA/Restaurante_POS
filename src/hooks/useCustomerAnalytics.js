@@ -7,6 +7,8 @@ export function useCustomerAnalytics() {
   const { orders } = useOrders()
 
   return useMemo(() => {
+    const customerById = new Map(customers.map((customer) => [customer.id, customer]))
+
     // 1. Total lifetime value (LTV)
     const totalLTV = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
     
@@ -15,8 +17,8 @@ export function useCustomerAnalytics() {
 
     // 3. Customer Retention (Rough estimate: customers with > 1 order)
     const customerOrderCounts = orders.reduce((acc, order) => {
-      const email = order.customer_info?.email
-      if (email) acc[email] = (acc[email] || 0) + 1
+      const customerKey = order.customer_id || order.customer_info?.email || order.customer_info?.phone
+      if (customerKey) acc[customerKey] = (acc[customerKey] || 0) + 1
       return acc
     }, {})
 
@@ -26,14 +28,18 @@ export function useCustomerAnalytics() {
 
     // 4. Top Spenders
     const customerSpending = orders.reduce((acc, order) => {
-      const email = order.customer_info?.email
-      if (email) acc[email] = (acc[email] || 0) + (order.total_amount || 0)
+      const customerKey = order.customer_id || order.customer_info?.email || order.customer_info?.phone
+      if (customerKey) acc[customerKey] = (acc[customerKey] || 0) + (order.total_amount || 0)
       return acc
     }, {})
 
     const topSpenders = Object.entries(customerSpending)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
+      .map(([customerKey, amount]) => [
+        customerById.get(customerKey)?.name || customerKey,
+        amount
+      ])
 
     return {
       totalLTV,

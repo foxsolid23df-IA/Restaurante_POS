@@ -6,6 +6,7 @@ import PaymentModal from '@/components/Payments/PaymentModal'
 import ActiveOrderCard from '@/components/Orders/ActiveOrderCard'
 import OrderDetailsModal from '@/components/Orders/OrderDetailsModal'
 import { toast } from 'sonner'
+import { crmApi } from '@/features/crm/api/crmApi'
 
 export default function ActiveOrders() {
   const { profile } = useAuthStore()
@@ -110,6 +111,7 @@ export default function ActiveOrders() {
         .from('orders')
         .update({ 
           status: 'completed',
+          payment_status: 'paid',
           closed_at: new Date().toISOString(),
           payment_user_id: profile?.id,
           payment_method: paymentData.method,
@@ -127,6 +129,16 @@ export default function ActiveOrders() {
         .eq('id', selectedOrder.table_id)
 
       if (tableError) throw tableError
+
+      try {
+        const loyaltyResult = await crmApi.awardOrderLoyaltyPoints(selectedOrder.id)
+        if (loyaltyResult?.awarded && loyaltyResult?.points > 0) {
+          toast.success(`Lealtad actualizada: ${loyaltyResult.points} puntos`)
+        }
+      } catch (loyaltyError) {
+        console.warn('No se pudieron otorgar puntos de lealtad:', loyaltyError)
+        toast.warning('Pago correcto, pero no se pudieron actualizar puntos de lealtad')
+      }
 
       // Mostrar mensaje de éxito
       let message = 'Pago procesado correctamente'

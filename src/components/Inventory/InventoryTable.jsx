@@ -1,144 +1,130 @@
-import { Edit2, Trash2, ClipboardList, Package, Info, History } from 'lucide-react'
+import { Edit2, History, Info, Package, RotateCcw, Trash2 } from 'lucide-react'
 
-export default function InventoryTable({ items, onEdit, onDelete, onAdjust, onHistory }) {
+const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
+
+function StatusBadge({ status }) {
+  const config = {
+    critical: 'bg-rose-50 text-rose-700 border-rose-200',
+    warning: 'bg-amber-50 text-amber-700 border-amber-200',
+    healthy: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  }
+  const labels = {
+    critical: 'Crítico',
+    warning: 'Preventivo',
+    healthy: 'Saludable'
+  }
+
   return (
-    <section className="bg-white rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden font-sans">
-      <div className="p-10 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-50/30 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary p-3 rounded-2xl text-white shadow-lg">
-            <ClipboardList size={24} strokeWidth={2.5} />
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-primary tracking-tight font-display uppercase">Inventario Maestro</h3>
-            <p className="text-slate-500 font-medium text-sm">Detalle técnico de existencias por unidad base</p>
-          </div>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-black ${config[status] || config.healthy}`}>
+      {labels[status] || 'Saludable'}
+    </span>
+  )
+}
+
+function ActionButton({ title, onClick, children, danger = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`h-9 w-9 inline-flex items-center justify-center rounded-md border transition-colors ${danger ? 'border-rose-200 text-rose-600 hover:bg-rose-50' : 'border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+export default function InventoryTable({ items, onEdit, onDelete, onAdjust, onHistory, onReactivate }) {
+  return (
+    <section className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-black text-slate-950">Inventario maestro</h3>
+          <p className="text-sm text-slate-500">Existencias, costo y acciones operativas.</p>
         </div>
-        
-        <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-           <div className="px-6 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
-              <Package size={14}/>
-              Items: {items.length}
-           </div>
-        </div>
+        <span className="text-xs font-black text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+          {items.length} registros
+        </span>
       </div>
-      
+
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-50/50">
-              <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Ingrediente / Insumo</th>
-              <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Stock Actual</th>
-              <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Nivel Mínimo</th>
-              <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Costo Unitario</th>
-              <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Estado de Salud</th>
-              <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Acciones</th>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500">Insumo</th>
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 text-right">Stock</th>
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 text-right">Mínimo</th>
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 text-right">Costo</th>
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 text-right">Valor</th>
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500">Estado</th>
+              <th className="px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
-            {items.map(item => {
-              const currentVal = parseFloat(item.current_stock)
-              const minVal = parseFloat(item.min_stock)
-              const isCritical = currentVal <= minVal
-              const isWarning = currentVal <= minVal * 1.5 && !isCritical
-              
-              return (
-                <tr key={item.id} className="hover:bg-slate-50/80 transition-all group duration-300">
-                  <td className="px-10 py-8 text-primary">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black transition-all font-display ${
-                        isCritical ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-slate-50 text-slate-400 border border-slate-100'
-                      }`}>
-                        {item.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-black text-primary group-hover:text-secondary transition-colors text-lg tracking-tight uppercase">{item.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 font-sans">Categoría: Suministro</p>
-                      </div>
+          <tbody className="divide-y divide-slate-100">
+            {items.map((item) => (
+              <tr key={item.id} className={`hover:bg-slate-50 ${item.is_active === false ? 'opacity-60' : ''}`}>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 font-black">
+                      {item.name?.charAt(0)?.toUpperCase() || 'I'}
                     </div>
-                  </td>
-                  <td className="px-10 py-8 text-center">
-                    <div className="flex flex-col items-center">
-                      <span className={`text-2xl font-black tracking-tighter font-display ${isCritical ? 'text-rose-600' : 'text-primary'}`}>
-                        {item.current_stock}
-                      </span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.unit}</span>
+                    <div>
+                      <p className="font-black text-slate-950">{item.name}</p>
+                      <p className="text-xs text-slate-500">{item.unit} {item.is_active === false ? '· Inactivo' : ''}</p>
                     </div>
-                  </td>
-                  <td className="px-10 py-8 text-center">
-                    <span className="text-xs font-black text-slate-400 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 uppercase tracking-widest">
-                      {item.min_stock} {item.unit}
-                    </span>
-                  </td>
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-1">
-                      <span className="text-slate-300 font-bold text-sm">$</span>
-                      <span className="text-xl font-black text-primary tracking-tight font-display">
-                        {parseFloat(item.cost_per_unit || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-8">
-                    <div className={`inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl border ${
-                      isCritical 
-                        ? 'bg-rose-50 text-rose-600 border-rose-100 animate-pulse' 
-                        : isWarning
-                          ? 'bg-amber-50 text-amber-600 border-amber-100'
-                          : 'bg-emerald-50 text-success border-emerald-100'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${
-                        isCritical ? 'bg-rose-600' : isWarning ? 'bg-amber-500' : 'bg-success'
-                      }`} />
-                      <span className="text-[10px] font-black uppercase tracking-widest font-sans">
-                        {isCritical ? 'Crítico' : isWarning ? 'Preventivo' : 'Saludable'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-8 text-right">
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 translate-x-4">
-                      <button 
-                        onClick={() => onAdjust(item)} 
-                        className="p-4 bg-success text-white rounded-[1.2rem] hover:opacity-80 transition-all shadow-xl shadow-emerald-100/50"
-                        title="Ajuste de Stock"
-                      >
-                        <Package size={18} strokeWidth={2.5} />
-                      </button>
-                      <button 
-                        onClick={() => onHistory(item)} 
-                        className="p-4 bg-secondary text-white rounded-[1.2rem] hover:opacity-80 transition-all shadow-xl shadow-blue-100/50"
-                        title="Historial de Movimientos"
-                      >
-                        <History size={18} strokeWidth={2.5} />
-                      </button>
-                      <button 
-                        onClick={() => onEdit(item)} 
-                        className="p-4 bg-primary text-white rounded-[1.2rem] hover:opacity-90 transition-all shadow-xl shadow-slate-200"
-                        title="Editar Registro"
-                      >
-                        <Edit2 size={18} strokeWidth={2.5} />
-                      </button>
-                      <button 
-                        onClick={() => onDelete(item)} 
-                        className="p-4 bg-white text-rose-500 rounded-[1.2rem] border-2 border-rose-50 hover:border-rose-500 hover:bg-rose-50 transition-all shadow-lg shadow-rose-500/5"
-                        title="Eliminar Item"
-                      >
-                        <Trash2 size={18} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right font-black text-slate-950">{Number(item.current_stock || 0).toFixed(2)} {item.unit}</td>
+                <td className="px-4 py-3 text-right text-slate-600">{Number(item.min_stock || 0).toFixed(2)} {item.unit}</td>
+                <td className="px-4 py-3 text-right">
+                  <span className={item.missingCost ? 'text-amber-700 font-black' : 'text-slate-700 font-semibold'}>
+                    {money.format(Number(item.cost_per_unit || 0))}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-slate-700">{money.format(Number(item.totalValue || 0))}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col items-start gap-1">
+                    <StatusBadge status={item.stockStatus} />
+                    {item.missingCost && <span className="text-[11px] font-bold text-amber-700">Costo pendiente</span>}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    {item.is_active === false ? (
+                      <ActionButton title="Reactivar" onClick={() => onReactivate(item)}>
+                        <RotateCcw size={16} />
+                      </ActionButton>
+                    ) : (
+                      <>
+                        <ActionButton title="Ajustar stock" onClick={() => onAdjust(item)}>
+                          <Package size={16} />
+                        </ActionButton>
+                        <ActionButton title="Kardex" onClick={() => onHistory(item)}>
+                          <History size={16} />
+                        </ActionButton>
+                        <ActionButton title="Editar" onClick={() => onEdit(item)}>
+                          <Edit2 size={16} />
+                        </ActionButton>
+                        <ActionButton title="Retirar" onClick={() => onDelete(item)} danger>
+                          <Trash2 size={16} />
+                        </ActionButton>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      
+
       {items.length === 0 && (
-        <div className="p-20 text-center">
-            <div className="bg-slate-50 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-slate-200 border border-slate-100">
-               <Info size={40} strokeWidth={1.5} />
-            </div>
-            <h4 className="text-2xl font-black text-primary mb-2 tracking-tight font-display uppercase">Sin registros</h4>
-            <p className="text-slate-400 font-medium text-sm">Comienza agregando insumos a tu base de datos central</p>
+        <div className="p-12 text-center">
+          <div className="bg-slate-50 w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4 text-slate-300 border border-slate-100">
+            <Info size={30} strokeWidth={1.5} />
+          </div>
+          <h4 className="text-xl font-black text-slate-950 mb-1">Sin registros</h4>
+          <p className="text-slate-500 text-sm">Agrega insumos o ajusta los filtros de búsqueda.</p>
         </div>
       )}
     </section>

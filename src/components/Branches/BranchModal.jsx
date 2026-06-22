@@ -1,113 +1,140 @@
-import { X, Save, Building2, MapPin, Phone, ShieldCheck, Loader2 } from 'lucide-react'
+import { Building2, Loader2, Mail, MapPin, Phone, Save, ShieldCheck, X } from 'lucide-react'
 
-export default function BranchModal({ isOpen, onClose, onSave, formData, setFormData, loading }) {
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50'
+
+export default function BranchModal({
+  isOpen,
+  onClose,
+  onSave,
+  formData,
+  setFormData,
+  loading,
+  mode = 'create'
+}) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[4rem] p-12 shadow-2xl w-full max-w-2xl border border-white/20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-           <Building2 size={180} />
-        </div>
-
-        <div className="flex justify-between items-start mb-12 relative z-10">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
           <div>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Nueva Entidad</h2>
-            <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] mt-2 border-l-4 border-primary pl-4 ml-1">Registro de Expansión Corporativa</p>
+            <h2 className="text-xl font-black text-slate-900">
+              {mode === 'edit' ? 'Editar sucursal' : 'Nueva sucursal'}
+            </h2>
+            <p className="mt-1 text-sm font-medium text-slate-500">Datos operativos para venta, inventario y reportes.</p>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={onClose}
-            className="p-5 bg-slate-50 hover:bg-rose-50 rounded-full text-slate-400 hover:text-rose-600 transition-all shadow-inner"
+            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
-            <X size={28} />
+            <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={onSave} className="space-y-10 relative z-10">
-          <div className="space-y-8">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-5 flex items-center gap-2">
-                 <Building2 size={12}/> Identidad Comercial
-              </label>
-              <input 
+        <form onSubmit={onSave} className="space-y-5 p-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Nombre" icon={<Building2 size={14} />} className="md:col-span-2">
+              <input
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-100 rounded-[2.5rem] px-8 py-6 text-xl font-black text-slate-900 focus:ring-8 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-200"
-                placeholder="Nombre de la Sucursal..."
+                onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                className={inputClass}
+                placeholder="Sucursal Centro"
               />
-            </div>
+            </Field>
 
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-5 flex items-center gap-2">
-                 <MapPin size={12}/> Geolocalización / Domicilio
-              </label>
-              <input 
+            <Field label="Codigo" icon={<ShieldCheck size={14} />}>
+              <input
                 type="text"
-                required
-                value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-100 rounded-[2.5rem] px-8 py-6 text-lg font-black text-slate-900 focus:ring-8 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-200"
-                placeholder="Calle, Número, Ciudad y Código Postal"
+                value={formData.code}
+                onChange={(event) => setFormData({ ...formData, code: event.target.value.toUpperCase() })}
+                className={inputClass}
+                placeholder="CENTRO"
               />
-            </div>
+            </Field>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-5 flex items-center gap-2">
-                   <Phone size={12}/> Contacto Técnico
-                </label>
-                <input 
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-[2rem] px-8 py-5 font-black text-slate-900 focus:ring-8 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-200"
-                  placeholder="Sin número reg."
-                />
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-5 flex items-center gap-2">
-                   <ShieldCheck size={12}/> Rango de Operación
-                </label>
-                <div 
-                  onClick={() => setFormData({...formData, is_main_office: !formData.is_main_office})}
-                  className={`h-[68px] cursor-pointer rounded-[2rem] border-2 flex items-center px-8 transition-all gap-4 group ${
-                    formData.is_main_office 
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200' 
-                      : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200'
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                    formData.is_main_office ? 'bg-primary border-primary scale-110' : 'bg-white border-slate-200'
-                  }`}>
-                    {formData.is_main_office && <Save size={12} className="text-white" />}
-                  </div>
-                  <span className="font-black text-xs uppercase tracking-widest">Definir como Matriz</span>
-                </div>
-              </div>
-            </div>
+            <Field label="Telefono" icon={<Phone size={14} />}>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={(event) => setFormData({ ...formData, phone: event.target.value })}
+                className={inputClass}
+                placeholder="55 0000 0000"
+              />
+            </Field>
+
+            <Field label="Ubicacion" icon={<MapPin size={14} />} className="md:col-span-2">
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(event) => setFormData({ ...formData, address: event.target.value })}
+                className={inputClass}
+                placeholder="Calle, numero, ciudad"
+              />
+            </Field>
+
+            <Field label="Email" icon={<Mail size={14} />}>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                className={inputClass}
+                placeholder="sucursal@restaurante.com"
+              />
+            </Field>
+
+            <Field label="Zona horaria">
+              <input
+                type="text"
+                value={formData.timezone}
+                onChange={(event) => setFormData({ ...formData, timezone: event.target.value })}
+                className={inputClass}
+                placeholder="America/Mexico_City"
+              />
+            </Field>
           </div>
 
-          <div className="flex gap-4 pt-10 border-t border-slate-50">
-            <button 
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+            <Toggle
+              checked={Boolean(formData.is_main_office)}
+              onChange={(checked) => setFormData({ ...formData, is_main_office: checked })}
+              label="Sede matriz"
+            />
+            <Toggle
+              checked={Boolean(formData.is_active)}
+              onChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              label="Activa"
+            />
+            {mode === 'create' && (
+              <Toggle
+                checked={Boolean(formData.create_defaults)}
+                onChange={(checked) => setFormData({ ...formData, create_defaults: checked })}
+                label="Crear area base"
+              />
+            )}
+          </div>
+
+          <div className="flex gap-3 border-t border-slate-100 pt-5">
+            <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-7 bg-slate-50 text-slate-500 rounded-[2rem] font-black text-xs uppercase tracking-[0.25em] hover:bg-slate-100 transition-all border border-slate-100"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="submit"
               disabled={loading}
-              className="flex-[2] py-7 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.25em] hover:bg-black transition-all shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex items-center justify-center gap-4 disabled:opacity-50 group"
+              className="flex-[2] rounded-xl bg-slate-900 px-5 py-3 text-sm font-black text-white transition hover:bg-black disabled:opacity-50 flex items-center justify-center gap-3"
             >
               {loading ? (
-                 <Loader2 className="animate-spin" size={20}/>
+                <Loader2 className="animate-spin" size={18} />
               ) : (
                 <>
-                  <Save size={20} className="group-hover:rotate-12 transition-transform" />
-                  Consolidar Sucursal
+                  <Save size={18} />
+                  {mode === 'edit' ? 'Guardar cambios' : 'Crear sucursal'}
                 </>
               )}
             </button>
@@ -115,5 +142,31 @@ export default function BranchModal({ isOpen, onClose, onSave, formData, setForm
         </form>
       </div>
     </div>
+  )
+}
+
+function Field({ label, icon, className = '', children }) {
+  return (
+    <label className={className}>
+      <span className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+        {icon}
+        {label}
+      </span>
+      {children}
+    </label>
+  )
+}
+
+function Toggle({ checked, onChange, label }) {
+  return (
+    <label className="flex items-center gap-3 text-sm font-bold text-slate-700">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 rounded border-slate-300"
+      />
+      {label}
+    </label>
   )
 }

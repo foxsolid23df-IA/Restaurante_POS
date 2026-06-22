@@ -1,74 +1,67 @@
 import { useState, useCallback, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { crmApi } from '@/features/crm/api/crmApi'
+import { useBranchStore } from '@/store/branchStore'
 
 export function useLoyaltyRewards() {
   const [rewards, setRewards] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const { currentBranch } = useBranchStore()
 
   const fetchRewards = useCallback(async () => {
     setLoading(true)
     setError(null)
-    try {
-      const { data, error } = await supabase
-        .from('loyalty_rewards')
-        .select('*')
-        .order('points_cost', { ascending: true })
 
-      if (error) throw error
-      setRewards(data || [])
+    try {
+      const rows = await crmApi.getRewards(currentBranch?.id)
+      setRewards(rows)
+      return rows
     } catch (err) {
       console.error('Error fetching rewards:', err)
       setError(err.message)
+      return []
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id])
 
   const saveReward = useCallback(async (rewardData) => {
     setLoading(true)
+    setError(null)
+
     try {
-      const isEditing = !!rewardData.id
-      const query = isEditing
-        ? supabase.from('loyalty_rewards').update(rewardData).eq('id', rewardData.id)
-        : supabase.from('loyalty_rewards').insert([rewardData])
-
-      const { data, error } = await query.select().single()
-
-      if (error) throw error
-      
-      if (isEditing) {
-        setRewards(prev => prev.map(r => r.id === data.id ? data : r))
-        toast.success('Recompensa actualizada')
-      } else {
-        setRewards(prev => [...prev, data])
-        toast.success('Nueva recompensa añadida')
-      }
+      const data = await crmApi.saveReward(rewardData, currentBranch?.id)
+      setRewards((prev) => {
+        const exists = prev.some((reward) => reward.id === data.id)
+        return exists
+          ? prev.map((reward) => (reward.id === data.id ? data : reward))
+          : [...prev, data]
+      })
+      toast.success(rewardData.id ? 'Recompensa actualizada' : 'Nueva recompensa agregada')
       return data
     } catch (err) {
       console.error('Error saving reward:', err)
-      toast.error('No se pudo guardar la recompensa')
+      setError(err.message)
+      toast.error(err.message || 'No se pudo guardar la recompensa')
       throw err
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id])
 
   const deleteReward = useCallback(async (id) => {
     setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('loyalty_rewards')
-        .delete()
-        .eq('id', id)
+    setError(null)
 
-      if (error) throw error
-      setRewards(prev => prev.filter(r => r.id !== id))
-      toast.success('Recompensa eliminada')
+    try {
+      await crmApi.deleteReward(id)
+      setRewards((prev) => prev.filter((reward) => reward.id !== id))
+      toast.success('Recompensa desactivada')
     } catch (err) {
       console.error('Error deleting reward:', err)
-      toast.error('No se pudo eliminar')
+      setError(err.message)
+      toast.error(err.message || 'No se pudo desactivar')
       throw err
     } finally {
       setLoading(false)

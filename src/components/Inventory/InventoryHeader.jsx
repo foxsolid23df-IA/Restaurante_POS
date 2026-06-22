@@ -1,51 +1,54 @@
-import { Plus, Package, AlertTriangle } from 'lucide-react'
+import { AlertTriangle, DollarSign, Package, Plus, TrendingDown, TrendingUp } from 'lucide-react'
 
-export default function InventoryHeader({ totalItems, criticalCount, onAddItem }) {
+const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
+
+function Kpi({ icon: Icon, label, value, tone = 'slate' }) {
+  const tones = {
+    slate: 'bg-slate-100 text-slate-700',
+    emerald: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    rose: 'bg-rose-50 text-rose-700',
+    blue: 'bg-blue-50 text-blue-700'
+  }
+
   return (
-    <header className="mb-10 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 font-sans">
-      <div>
-        <h1 className="text-4xl font-black text-primary tracking-tight font-display uppercase">Gestión de Inventario</h1>
-        <p className="text-slate-500 mt-2 font-medium text-lg leading-snug">Control crítico de ingredientes y suministros básicos del restaurante</p>
+    <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3 min-w-0">
+      <div className={`h-9 w-9 rounded-md flex items-center justify-center ${tones[tone]}`}>
+        <Icon size={18} />
       </div>
-      
-      <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-        <div className="bg-white px-8 py-5 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center gap-5 min-w-[200px] flex-1 lg:flex-none">
-          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-success">
-            <Package size={24} strokeWidth={2.5} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Items</p>
-            <p className="text-3xl font-black text-primary font-display tracking-tight">{totalItems}</p>
-          </div>
-        </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide truncate">{label}</p>
+        <p className="text-lg font-black text-slate-950 truncate">{value}</p>
+      </div>
+    </div>
+  )
+}
 
-        <div className={`px-8 py-5 rounded-[2.5rem] border flex items-center gap-5 min-w-[200px] flex-1 lg:flex-none transition-all shadow-xl ${
-          criticalCount > 0 
-            ? 'bg-rose-50 border-rose-100 shadow-rose-100/50' 
-            : 'bg-white border-slate-100 shadow-slate-200/50'
-        }`}>
-          <div className={`p-4 rounded-2xl border ${
-            criticalCount > 0 
-              ? 'bg-white border-rose-200 text-rose-500 animate-pulse' 
-              : 'bg-slate-50 border-slate-100 text-slate-400'
-          }`}>
-            <AlertTriangle size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nivel Crítico</p>
-            <p className={`text-3xl font-black font-display tracking-tight ${criticalCount > 0 ? 'text-rose-600' : 'text-primary'}`}>
-              {criticalCount}
-            </p>
-          </div>
+export default function InventoryHeader({ totalItems, criticalCount, dashboard = {}, onAddItem }) {
+  return (
+    <header className="mb-5 space-y-4">
+      <div className="flex flex-col lg:flex-row justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-950 tracking-tight">Inventarios</h1>
+          <p className="text-slate-500 mt-1 font-medium">Stock, costos, alertas y Kardex por sucursal.</p>
         </div>
 
         <button
           onClick={onAddItem}
-          className="flex items-center justify-center gap-3 bg-primary text-white px-10 py-5 rounded-[2rem] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-300/40 font-black text-xs uppercase tracking-[0.2em] flex-1 lg:flex-none active:scale-[0.98]"
+          className="h-11 inline-flex items-center justify-center gap-2 bg-slate-950 text-white px-5 rounded-md hover:bg-slate-800 transition-all font-black text-xs uppercase tracking-wide"
         >
-          <Plus size={20} strokeWidth={3} />
-          Nuevo Insumo
+          <Plus size={18} strokeWidth={3} />
+          Nuevo insumo
         </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+        <Kpi icon={Package} label="Insumos" value={dashboard.totalItems ?? totalItems} />
+        <Kpi icon={AlertTriangle} label="Críticos" value={dashboard.criticalCount ?? criticalCount} tone={criticalCount > 0 ? 'rose' : 'emerald'} />
+        <Kpi icon={DollarSign} label="Valor stock" value={currency.format(Number(dashboard.inventoryValue || 0))} tone="emerald" />
+        <Kpi icon={AlertTriangle} label="Sin costo" value={dashboard.missingCostCount || 0} tone={(dashboard.missingCostCount || 0) > 0 ? 'amber' : 'slate'} />
+        <Kpi icon={TrendingUp} label="Entradas hoy" value={Number(dashboard.entriesToday || 0).toFixed(2)} tone="blue" />
+        <Kpi icon={TrendingDown} label="Salidas hoy" value={Number(dashboard.exitsToday || 0).toFixed(2)} tone="rose" />
       </div>
     </header>
   )

@@ -1,42 +1,42 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { crmApi } from '@/features/crm/api/crmApi'
+import { useBranchStore } from '@/store/branchStore'
 
 export function useCustomers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const { currentBranch } = useBranchStore()
 
-  const fetchCustomers = useCallback(async () => {
+  const fetchCustomers = useCallback(async (filters = {}) => {
     setLoading(true)
     setError(null)
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('name')
 
-      if (error) throw error
-      setCustomers(data || [])
+    try {
+      const rows = await crmApi.getCustomers(currentBranch?.id, filters)
+      setCustomers(rows)
+      return rows
     } catch (err) {
       console.error('Error fetching customers:', err)
       setError(err.message)
+      return []
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id])
 
   const createCustomer = useCallback(async (customerData) => {
     setLoading(true)
     setError(null)
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .insert([customerData])
-        .select()
-        .single()
 
-      if (error) throw error
-      setCustomers(prev => [...prev, data])
+    try {
+      const data = await crmApi.saveCustomer(customerData, currentBranch?.id)
+      setCustomers((prev) => {
+        const exists = prev.some((customer) => customer.id === data.id)
+        return exists
+          ? prev.map((customer) => (customer.id === data.id ? data : customer))
+          : [...prev, data]
+      })
       return data
     } catch (err) {
       console.error('Error creating customer:', err)
@@ -45,21 +45,15 @@ export function useCustomers() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id])
 
   const updateCustomer = useCallback(async (id, updates) => {
     setLoading(true)
     setError(null)
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
 
-      if (error) throw error
-      setCustomers(prev => prev.map(c => c.id === id ? data : c))
+    try {
+      const data = await crmApi.saveCustomer({ ...updates, id }, currentBranch?.id)
+      setCustomers((prev) => prev.map((customer) => (customer.id === id ? data : customer)))
       return data
     } catch (err) {
       console.error('Error updating customer:', err)
@@ -68,19 +62,20 @@ export function useCustomers() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentBranch?.id])
 
   const deleteCustomer = useCallback(async (id) => {
     setLoading(true)
     setError(null)
-    try {
-      const { error } = await supabase
-        .from('customers')
-        .delete()
-        .eq('id', id)
 
-      if (error) throw error
-      setCustomers(prev => prev.filter(c => c.id !== id))
+    try {
+      const result = await crmApi.deactivateOrDeleteCustomer(id)
+      if (result.action === 'deleted') {
+        setCustomers((prev) => prev.filter((customer) => customer.id !== id))
+      } else {
+        setCustomers((prev) => prev.filter((customer) => customer.id !== id))
+      }
+      return result
     } catch (err) {
       console.error('Error deleting customer:', err)
       setError(err.message)

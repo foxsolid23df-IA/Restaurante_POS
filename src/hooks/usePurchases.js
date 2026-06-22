@@ -1,54 +1,17 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useBranchStore } from '@/store/branchStore'
+import { inventoryApi } from '@/features/inventory/api/inventoryApi'
 
 export function usePurchases() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { currentBranch } = useBranchStore()
 
-  // Suppliers CRUD
-  const getSuppliers = useCallback(async () => {
-    if (!currentBranch?.id) return []
+  const withLoading = useCallback(async (action) => {
     setLoading(true)
     setError(null)
     try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('branch_id', currentBranch.id)
-        .order('name', { ascending: true })
-      if (error) throw error
-      return data
-    } catch (err) {
-      setError(err.message)
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const saveSupplier = useCallback(async (supplier) => {
-    setLoading(true)
-    try {
-      if (supplier.id) {
-        const { data, error } = await supabase
-          .from('suppliers')
-          .update(supplier)
-          .eq('id', supplier.id)
-          .select()
-          .single()
-        if (error) throw error
-        return data
-      } else {
-        const { data, error } = await supabase
-          .from('suppliers')
-          .insert([{ ...supplier, branch_id: currentBranch.id }])
-          .select()
-          .single()
-        if (error) throw error
-        return data
-      }
+      return await action()
     } catch (err) {
       setError(err.message)
       throw err
@@ -57,124 +20,75 @@ export function usePurchases() {
     }
   }, [])
 
-  // Purchases logic
+  const getSuppliers = useCallback(async () => {
+    if (!currentBranch?.id) return []
+    return withLoading(() => inventoryApi.getSuppliers(currentBranch.id))
+  }, [currentBranch?.id, withLoading])
+
+  const saveSupplier = useCallback(async (supplier) => (
+    withLoading(() => inventoryApi.saveSupplier(supplier, currentBranch?.id))
+  ), [currentBranch?.id, withLoading])
+
   const getPurchases = useCallback(async (filters = {}) => {
-    setLoading(true)
-    try {
-      let query = supabase
-        .from('purchases')
-        .select(`
-          *,
-          suppliers(name),
-          profiles(full_name)
-        `)
-        .eq('branch_id', currentBranch.id)
-        .order('purchase_date', { ascending: false })
+    if (!currentBranch?.id) return []
+    return withLoading(() => inventoryApi.getPurchases(currentBranch.id, filters))
+  }, [currentBranch?.id, withLoading])
 
-      if (filters.startDate) query = query.gte('purchase_date', filters.startDate)
-      if (filters.endDate) query = query.lte('purchase_date', filters.endDate)
-      if (filters.supplierId) query = query.eq('supplier_id', filters.supplierId)
+  const createPurchase = useCallback(async (purchaseData, items, status = 'draft') => (
+    withLoading(() => inventoryApi.createPurchase(purchaseData, items, currentBranch?.id, status))
+  ), [currentBranch?.id, withLoading])
 
-      const { data, error } = await query
-      if (error) throw error
-      return data
-    } catch (err) {
-      setError(err.message)
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const receivePurchase = useCallback(async (purchaseId, items = null) => (
+    withLoading(() => inventoryApi.receivePurchase(purchaseId, items))
+  ), [withLoading])
 
-  const createPurchase = useCallback(async (purchaseData, items) => {
-    setLoading(true)
-    try {
-      // 1. Create Purchase record
-      const { data: purchase, error: pError } = await supabase
-        .from('purchases')
-        .insert([{ ...purchaseData, branch_id: currentBranch.id }])
-        .select()
-        .single()
-      
-      if (pError) throw pError
+  const cancelPurchase = useCallback(async (purchaseId, reason) => (
+    withLoading(() => inventoryApi.cancelPurchase(purchaseId, reason))
+  ), [withLoading])
 
-      // 2. Create Purchase Items
-      const purchaseItems = items.map(item => ({
-        purchase_id: purchase.id,
-        inventory_item_id: item.inventory_item_id,
-        quantity: item.quantity,
-        unit_cost: item.unit_cost,
-        total_cost: item.quantity * item.unit_cost
-      }))
+  const getPurchaseDetails = useCallback(async (purchaseId) => (
+    withLoading(() => inventoryApi.getPurchaseDetails(purchaseId))
+  ), [withLoading])
 
-      const { error: itemsError } = await supabase
-        .from('purchase_items')
-        .insert(purchaseItems)
+  const getWarehouseDashboard = useCallback(async () => {
+    if (!currentBranch?.id) return {}
+    return withLoading(() => inventoryApi.getWarehouseDashboard(currentBranch.id))
+  }, [currentBranch?.id, withLoading])
 
-      if (itemsError) throw itemsError
+  const getPurchaseSuggestions = useCallback(async () => {
+    if (!currentBranch?.id) return []
+    return withLoading(() => inventoryApi.getPurchaseSuggestions(currentBranch.id))
+  }, [currentBranch?.id, withLoading])
 
-      // 3. Update Inventory Stock (Logic: Increment stock)
-      for (const item of items) {
-        // Fetch current stock
-        const { data: invItem, error: fetchInvError } = await supabase
-          .from('inventory_items')
-          .select('current_stock')
-          .eq('id', item.inventory_item_id)
-          .single()
+  const getTransfers = useCallback(async () => {
+    if (!currentBranch?.id) return []
+    return withLoading(() => inventoryApi.getTransfers(currentBranch.id))
+  }, [currentBranch?.id, withLoading])
 
-        if (fetchInvError) throw fetchInvError
+  const createTransfer = useCallback(async ({ toBranchId, items, notes }) => (
+    withLoading(() => inventoryApi.createTransfer({
+      fromBranchId: currentBranch?.id,
+      toBranchId,
+      items,
+      notes
+    }))
+  ), [currentBranch?.id, withLoading])
 
-        const newStock = parseFloat(invItem.current_stock) + parseFloat(item.quantity)
+  const completeTransfer = useCallback(async (transferId) => (
+    withLoading(() => inventoryApi.completeTransfer(transferId))
+  ), [withLoading])
 
-        // Update current stock and cost per unit (weighted average eventually, for now just update)
-        const { error: updateInvError } = await supabase
-          .from('inventory_items')
-          .update({ 
-            current_stock: newStock,
-            cost_per_unit: item.unit_cost // Update to latest cost
-          })
-          .eq('id', item.inventory_item_id)
+  const getSupplierCategories = useCallback(async () => (
+    withLoading(() => inventoryApi.getSupplierCategories(currentBranch?.id))
+  ), [currentBranch?.id, withLoading])
 
-        if (updateInvError) throw updateInvError
+  const addSupplierCategory = useCallback(async (name) => (
+    withLoading(() => inventoryApi.saveSupplierCategory(name, currentBranch?.id))
+  ), [currentBranch?.id, withLoading])
 
-        // 4. Log Inventory Movement
-        await supabase.from('inventory_log').insert([{
-           inventory_item_id: item.inventory_item_id,
-           old_stock: invItem.current_stock,
-           new_stock: newStock,
-           quantity_used: -item.quantity, // Negative means added
-           reason: `Compra #${purchase.invoice_number || purchase.id.slice(0,8)}`
-        }])
-      }
-
-      return purchase
-    } catch (err) {
-      setError(err.message)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [currentBranch])
-
-  const getPurchaseDetails = useCallback(async (purchaseId) => {
-    setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('purchase_items')
-        .select(`
-          *,
-          inventory_items(name, unit)
-        `)
-        .eq('purchase_id', purchaseId)
-      if (error) throw error
-      return data
-    } catch (err) {
-      console.error('Error fetching purchase details:', err)
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const deleteSupplierCategory = useCallback(async (id) => (
+    withLoading(() => inventoryApi.deleteSupplierCategory(id))
+  ), [withLoading])
 
   return {
     loading,
@@ -183,55 +97,16 @@ export function usePurchases() {
     saveSupplier,
     getPurchases,
     createPurchase,
+    receivePurchase,
+    cancelPurchase,
     getPurchaseDetails,
-    // Category Management
-    getSupplierCategories: useCallback(async () => {
-      setLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('supplier_categories')
-          .select('*')
-          .order('name')
-        if (error) throw error
-        return data
-      } catch (err) {
-        setError(err.message)
-        return []
-      } finally {
-        setLoading(false)
-      }
-    }, []),
-    addSupplierCategory: useCallback(async (name) => {
-      setLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('supplier_categories')
-          .insert([{ name, branch_id: currentBranch.id }])
-          .select()
-          .single()
-        if (error) throw error
-        return data
-      } catch (err) {
-        setError(err.message)
-        throw err
-      } finally {
-        setLoading(false)
-      }
-    }, [currentBranch]),
-    deleteSupplierCategory: useCallback(async (id) => {
-      setLoading(true)
-      try {
-        const { error } = await supabase
-          .from('supplier_categories')
-          .delete()
-          .eq('id', id)
-        if (error) throw error
-      } catch (err) {
-        setError(err.message)
-        throw err
-      } finally {
-        setLoading(false)
-      }
-    }, [])
+    getWarehouseDashboard,
+    getPurchaseSuggestions,
+    getTransfers,
+    createTransfer,
+    completeTransfer,
+    getSupplierCategories,
+    addSupplierCategory,
+    deleteSupplierCategory
   }
 }

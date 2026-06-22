@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { X, History, ShoppingBag, Calendar, User, Loader2, ArrowRight } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { X, History, ShoppingBag, Calendar, Loader2, ArrowRight } from 'lucide-react'
+import { crmApi } from '@/features/crm/api/crmApi'
 
 export default function CustomerHistoryModal({ customer, onClose }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState(null)
 
   useEffect(() => {
     if (customer) {
@@ -17,14 +18,9 @@ export default function CustomerHistoryModal({ customer, onClose }) {
       setLoading(true)
       // Buscamos órdenes donde el customer_id coincida o 
       // donde el customer_info meta-data coincida (para órdenes históricas sin ID formal)
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*, tables(name)')
-        .eq('customer_id', customer.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setOrders(data || [])
+      const data = await crmApi.getCustomerProfile(customer.id)
+      setProfile(data || null)
+      setOrders(data?.orders || [])
     } catch (error) {
       console.error("Error fetching history:", error)
     } finally {

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { X, ArrowRight, Package, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useBranchStore } from '@/store/branchStore'
-import { useAuthStore } from '@/store/authStore'
+import { usePurchases } from '@/hooks/usePurchases'
+import { inventoryApi } from '@/features/inventory/api/inventoryApi'
 
 export default function InventoryTransferModal({ onClose, onSave }) {
   const { currentBranch, branches } = useBranchStore()
-  const { profile } = useAuthStore()
+  const { createTransfer } = usePurchases()
   
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([])
@@ -20,13 +20,8 @@ export default function InventoryTransferModal({ onClose, onSave }) {
   }, [])
 
   const loadInventory = async () => {
-    const { data } = await supabase
-      .from('inventory_items')
-      .select('*')
-      .eq('branch_id', currentBranch.id)
-      .gt('current_stock', 0)
-      .order('name')
-    setItems(data || [])
+    const data = await inventoryApi.getInventoryItems(currentBranch.id)
+    setItems((data || []).filter((item) => Number(item.current_stock || 0) > 0))
   }
 
   const handleAddItem = () => {
@@ -52,33 +47,11 @@ export default function InventoryTransferModal({ onClose, onSave }) {
 
     setLoading(true)
     try {
-      // 1. Create Transfer Header
-      const { data: transfer, error: tError } = await supabase
-        .from('inventory_transfers')
-        .insert({
-          from_branch_id: currentBranch.id,
-          to_branch_id: selectedToBranch,
-          requested_by: profile.id,
-          status: 'pending',
-          notes
-        })
-        .select()
-        .single()
-
-      if (tError) throw tError
-
-      // 2. Create Items
-      const itemsToInsert = transferItems.map(item => ({
-        transfer_id: transfer.id,
-        inventory_item_id: item.inventory_item_id,
-        quantity: item.quantity
-      }))
-
-      const { error: iError } = await supabase
-        .from('inventory_transfer_items')
-        .insert(itemsToInsert)
-
-      if (iError) throw iError
+      await createTransfer({
+        toBranchId: selectedToBranch,
+        items: transferItems,
+        notes
+      })
 
       setStatus('success')
       setTimeout(() => {
