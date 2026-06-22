@@ -26,11 +26,13 @@ const statusCards = [
   { key: 'activePrinters', label: 'Impresoras activas', numeric: true }
 ]
 
+const defaultSettings = settingsApi.normalizeSettings({})
+
 export default function Settings() {
   const { settings, loading, error, fetchSettings, updateSettings } = useBusinessStore()
   const { currentBranch } = useBranchStore()
   const [activeTab, setActiveTab] = useState('business')
-  const [formData, setFormData] = useState(null)
+  const [formData, setFormData] = useState(defaultSettings)
   const [dashboard, setDashboard] = useState(null)
   const [auditLog, setAuditLog] = useState([])
   const [actionLoading, setActionLoading] = useState(false)
@@ -42,7 +44,8 @@ export default function Settings() {
   const loadData = async () => {
     setPageError(null)
     try {
-      await fetchSettings()
+      const loadedSettings = await fetchSettings()
+      if (loadedSettings) setFormData({ ...loadedSettings })
       const [dashboardData, auditData] = await Promise.all([
         settingsApi.getDashboard(currentBranch?.id || null),
         settingsApi.getAuditLog(30).catch(() => [])
@@ -82,7 +85,7 @@ export default function Settings() {
     }
   }
 
-  if (!formData && loading) {
+  if (loading && !settings) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 text-slate-500">
         <Loader2 className="mb-3 animate-spin" size={36} />
@@ -91,7 +94,7 @@ export default function Settings() {
     )
   }
 
-  if (!formData && (pageError || error)) {
+  if (!settings && (pageError || error)) {
     return (
       <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center p-6">
         <div className="rounded-lg border border-rose-200 bg-white p-6 text-center shadow-sm">
