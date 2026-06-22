@@ -3,8 +3,17 @@ import { supabase } from '@/lib/supabase'
 const isMissingRpc = (error) => (
   error?.code === 'PGRST202'
   || error?.code === '42883'
+  || error?.code === '404'
   || /function .* does not exist/i.test(error?.message || '')
   || /Could not find the function/i.test(error?.message || '')
+)
+
+const isMissingSchema = (error) => (
+  error?.code === '42P01'
+  || error?.code === '42703'
+  || error?.code === '404'
+  || /does not exist/i.test(error?.message || '')
+  || /Could not find/i.test(error?.message || '')
 )
 
 const migrationError = (action) => (
@@ -64,15 +73,35 @@ async function rpcOrThrow(name, params, action) {
   throw error
 }
 
+async function getBusinessSettingsFallback() {
+  const { data, error } = await supabase
+    .from('business_settings')
+    .select('*')
+    .order('created_at', { ascending: true })
+    .limit(1)
+
+  if (error) {
+    if (isMissingSchema(error)) return normalizeSettings({})
+    throw error
+  }
+
+  return normalizeSettings(data?.[0] || {})
+}
+
 export const settingsApi = {
   normalizeSettings,
 
   async getBusinessSettings() {
-    const data = await rpcOrThrow('get_business_settings', {}, 'cargar la configuracion')
-    if (!data || Object.keys(data).length === 0) {
-      throw migrationError('cargar la configuracion')
+    try {
+      const data = await rpcOrThrow('get_business_settings', {}, 'cargar la configuracion')
+      if (!data || Object.keys(data).length === 0) return getBusinessSettingsFallback()
+      return normalizeSettings(data)
+    } catch (error) {
+      if (/settings_mvp/i.test(error.message || '') || isMissingRpc(error) || isMissingSchema(error)) {
+        return getBusinessSettingsFallback()
+      }
+      throw error
     }
-    return normalizeSettings(data)
   },
 
   async updateBusinessSettings(settings) {
@@ -90,7 +119,21 @@ export const settingsApi = {
   },
 
   async getDashboard(branchId) {
-    return rpcOrThrow('get_settings_dashboard', { p_branch_id: branchId || null }, 'cargar el estado de configuracion')
+    try {
+      return await rpcOrThrow('get_settings_dashboard', { p_branch_id: branchId || null }, 'cargar el estado de configuracion')
+    } catch (error) {
+      if (!/settings_mvp/i.test(error.message || '') && !isMissingRpc(error) && !isMissingSchema(error)) throw error
+      const settings = await getBusinessSettingsFallback()
+      return {
+        fiscalComplete: Boolean(settings.name && settings.tax_name),
+        ticketConfigured: Boolean(settings.ticket_header || settings.ticket_footer),
+        electronicInvoicingEnabled: Boolean(settings.is_electronic_invoicing_enabled),
+        activePrinters: 0,
+        lastUpdatedAt: settings.updated_at,
+        lastUpdatedBy: null,
+        auditCount: 0
+      }
+    }
   },
 
   async getPrinters(branchId) {
@@ -102,7 +145,10 @@ export const settingsApi = {
       .neq('is_active', false)
       .order('name')
 
-    if (error) throw error
+    if (error) {
+      if (isMissingSchema(error)) return []
+      throw error
+    }
     return data || []
   },
 
@@ -143,7 +189,10 @@ export const settingsApi = {
       .order('created_at', { ascending: false })
       .limit(limit)
 
-    if (error) throw error
+    if (error) {
+      if (isMissingSchema(error)) return []
+      throw error
+    }
     return data || []
   }
 }

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useEffect, Suspense } from 'react'
+import { Component, useEffect, Suspense } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from 'sonner'
 import AdminLayout from '@/components/Layout/AdminLayout'
@@ -34,6 +34,41 @@ import Branches from '@/pages/admin/Branches'
 import SplitBill from '@/pages/SplitBill'
 import SalonLayout from '@/pages/admin/SalonLayout'
 import { hasPermission } from '@/hooks/useRolePermissions'
+
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-lg text-center">
+            <h1 className="text-xl font-black text-slate-950 mb-2">No se pudo cargar la aplicación</h1>
+            <p className="text-sm text-slate-500 mb-5">
+              Hubo un problema al iniciar. Recarga la página; si continúa, revisa que las migraciones de Supabase estén aplicadas.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="bg-slate-950 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+            >
+              Recargar
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 // Protected Route wrapper
 const adminRoutePermissions = [
@@ -108,59 +143,61 @@ function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />
-      <Suspense fallback={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] font-sans">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary/10 border-t-secondary mb-6" />
-          <p className="font-black text-primary tracking-[0.3em] text-[10px] uppercase animate-pulse">Restaurante Elite</p>
-        </div>
-      }>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/pin-login" element={<PINLogin />} />
-          
-          {/* Admin Portal */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} requireSession useAdminPermissions />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="reports" element={<SalesReports />} />
-              <Route path="catalog" element={<Products />} />
-              <Route path="catalog/categories" element={<Categories />} />
-              <Route path="catalog/:productId/recipe" element={<RecipeBuilder />} />
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="staff" element={<Users />} />
-              <Route path="crm" element={<CRM />} />
-              <Route path="purchases" element={<Purchases />} />
-              <Route path="branches" element={<Branches />} />
-              <Route path="salon" element={<SalonLayout />} />
-              <Route path="settings" element={<Settings />} />
+      <AppErrorBoundary>
+        <Suspense fallback={
+          <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] font-sans">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary/10 border-t-secondary mb-6" />
+            <p className="font-black text-primary tracking-[0.3em] text-[10px] uppercase animate-pulse">Restaurante Elite</p>
+          </div>
+        }>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/pin-login" element={<PINLogin />} />
+            
+            {/* Admin Portal */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} requireSession useAdminPermissions />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="reports" element={<SalesReports />} />
+                <Route path="catalog" element={<Products />} />
+                <Route path="catalog/categories" element={<Categories />} />
+                <Route path="catalog/:productId/recipe" element={<RecipeBuilder />} />
+                <Route path="inventory" element={<Inventory />} />
+                <Route path="staff" element={<Users />} />
+                <Route path="crm" element={<CRM />} />
+                <Route path="purchases" element={<Purchases />} />
+                <Route path="branches" element={<Branches />} />
+                <Route path="salon" element={<SalonLayout />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* POS Portal */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']} />}>
-            <Route path="/pos" element={<POSLayout />}>
-              <Route index element={<Navigate to="/pos/tables" replace />} />
-              <Route path="tables" element={<Tables />} />
-              <Route path="orders" element={<POS />} />
-              <Route path="active-orders" element={<ActiveOrders />} />
-              <Route path="kitchen" element={<KitchenOrders />} />
-              <Route path="bar" element={<BarOrders />} />
-              <Route path="delivery" element={<Delivery />} />
-              <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
-              <Route path="reservations" element={<Reservations />} />
-              <Route path="cash-closing" element={<CashClosing />} />
-              <Route path="daily-closing" element={<DailyClosing />} />
-              <Route path="loyalty" element={<LoyaltyProgram />} />
-              <Route path="customer/:id" element={<CustomerProfile />} />
-              <Route path="split-bill/:tableId" element={<SplitBill />} />
+            {/* POS Portal */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']} />}>
+              <Route path="/pos" element={<POSLayout />}>
+                <Route index element={<Navigate to="/pos/tables" replace />} />
+                <Route path="tables" element={<Tables />} />
+                <Route path="orders" element={<POS />} />
+                <Route path="active-orders" element={<ActiveOrders />} />
+                <Route path="kitchen" element={<KitchenOrders />} />
+                <Route path="bar" element={<BarOrders />} />
+                <Route path="delivery" element={<Delivery />} />
+                <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
+                <Route path="reservations" element={<Reservations />} />
+                <Route path="cash-closing" element={<CashClosing />} />
+                <Route path="daily-closing" element={<DailyClosing />} />
+                <Route path="loyalty" element={<LoyaltyProgram />} />
+                <Route path="customer/:id" element={<CustomerProfile />} />
+                <Route path="split-bill/:tableId" element={<SplitBill />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Global Redirects */}
-          <Route path="/" element={<Navigate to="/pos" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+            {/* Global Redirects */}
+            <Route path="/" element={<Navigate to="/pos" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </AppErrorBoundary>
     </BrowserRouter>
   )
 }

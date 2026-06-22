@@ -7,13 +7,42 @@ const migrationError = (action) => (
 const rpcOrThrow = async (name, params, action) => {
   const { data, error } = await supabase.rpc(name, params)
   if (error) {
-    if (error.code === '42883' || /function .* does not exist/i.test(error.message || '')) {
+    if (
+      error.code === '42883'
+      || error.code === 'PGRST202'
+      || error.code === '404'
+      || /function .* does not exist/i.test(error.message || '')
+      || /Could not find the function/i.test(error.message || '')
+    ) {
       throw migrationError(action)
     }
     throw error
   }
   return data
 }
+
+const emptyLayout = () => ({
+  areas: [],
+  tables: [],
+  metrics: {
+    total: 0,
+    available: 0,
+    occupied: 0,
+    reserved: 0,
+    maintenance: 0,
+    totalCapacity: 0,
+    occupiedCapacity: 0,
+    utilizationRate: 0
+  }
+})
+
+const isMissingSchema = (error) => (
+  error?.code === '42P01'
+  || error?.code === '42703'
+  || error?.code === '404'
+  || /does not exist/i.test(error?.message || '')
+  || /Could not find/i.test(error?.message || '')
+)
 
 export const normalizeArea = (area = {}) => ({
   ...area,
@@ -73,23 +102,46 @@ const tablePayload = (table = {}, branchId) => ({
 export const salonApi = {
   async getLayout(branchId) {
     if (!branchId) {
+      return emptyLayout()
+    }
+
+    let data
+    try {
+      data = await rpcOrThrow('get_salon_layout', { p_branch_id: branchId }, 'cargar el salon')
+    } catch (error) {
+      if (!/salon_architecture_mvp/i.test(error.message || '') && !isMissingSchema(error)) throw error
+
+      const [areasResult, tablesResult] = await Promise.all([
+        supabase.from('areas').select('*').eq('branch_id', branchId).order('name'),
+        supabase.from('tables').select('*, areas(name, color)').eq('branch_id', branchId).order('name')
+      ])
+
+      if (areasResult.error && !isMissingSchema(areasResult.error)) throw areasResult.error
+      if (tablesResult.error && !isMissingSchema(tablesResult.error)) throw tablesResult.error
+
+      const fallbackAreas = (areasResult.data || []).map(normalizeArea)
+      const fallbackTables = (tablesResult.data || []).map(normalizeTable)
+      const totalCapacity = fallbackTables.reduce((sum, table) => sum + Number(table.capacity || 0), 0)
+      const occupiedCapacity = fallbackTables
+        .filter((table) => table.status === 'occupied')
+        .reduce((sum, table) => sum + Number(table.capacity || 0), 0)
+
       return {
-        areas: [],
-        tables: [],
+        areas: fallbackAreas,
+        tables: fallbackTables,
         metrics: {
-          total: 0,
-          available: 0,
-          occupied: 0,
-          reserved: 0,
-          maintenance: 0,
-          totalCapacity: 0,
-          occupiedCapacity: 0,
-          utilizationRate: 0
+          total: fallbackTables.length,
+          available: fallbackTables.filter((table) => table.status === 'available').length,
+          occupied: fallbackTables.filter((table) => table.status === 'occupied').length,
+          reserved: fallbackTables.filter((table) => table.status === 'reserved').length,
+          maintenance: fallbackTables.filter((table) => table.status === 'maintenance').length,
+          totalCapacity,
+          occupiedCapacity,
+          utilizationRate: totalCapacity > 0 ? (occupiedCapacity / totalCapacity) * 100 : 0
         }
       }
     }
 
-    const data = await rpcOrThrow('get_salon_layout', { p_branch_id: branchId }, 'cargar el salon')
     const metrics = data?.metrics || {}
     const totalCapacity = Number(metrics.totalCapacity || metrics.totalcapacity || 0)
     const occupiedCapacity = Number(metrics.occupiedCapacity || metrics.occupiedcapacity || 0)

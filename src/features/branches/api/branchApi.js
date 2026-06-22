@@ -10,6 +10,13 @@ const toBool = (value, fallback = false) => {
   return Boolean(value)
 }
 
+const isMissingSchema = (error) => (
+  error?.code === '42P01'
+  || error?.code === '42703'
+  || /does not exist/i.test(error?.message || '')
+  || /Could not find/i.test(error?.message || '')
+)
+
 export const normalizeBranch = (branch = {}) => ({
   ...branch,
   id: branch.id,
@@ -63,11 +70,13 @@ export const branchApi = {
     if (!error) return (data || []).map(normalizeBranch)
 
     let fallbackQuery = supabase.from('branches').select('*').order('name')
-    if (!includeInactive) fallbackQuery = fallbackQuery.eq('is_active', true)
+    if (!includeInactive && !isMissingSchema(error)) fallbackQuery = fallbackQuery.eq('is_active', true)
 
     const { data: fallbackData, error: fallbackError } = await fallbackQuery
     if (fallbackError) throw fallbackError
-    return (fallbackData || []).map(normalizeBranch)
+    return (fallbackData || [])
+      .map(normalizeBranch)
+      .filter((branch) => includeInactive || branch.isActive)
   },
 
   async getDashboard() {
