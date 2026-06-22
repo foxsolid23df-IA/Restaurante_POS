@@ -1,72 +1,120 @@
-import { DollarSign, TrendingDown, TrendingUp, Target, ShieldCheck, Briefcase } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Banknote, CreditCard, DollarSign, ReceiptText, ShieldCheck } from 'lucide-react'
 import { FinancialCard } from './MetricCards'
 
+const methodLabels = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+  digital_wallet: 'Wallet',
+  other: 'Otros'
+}
+
 export default function FinancialSummary({ data, formatCurrency }) {
-  const progress = 78; // Simulado para el diseño
-  
+  const financials = data.financials || {}
+  const summary = data.currentSummary || {}
+  const methods = Object.entries(summary.paymentMethods || {})
+
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-        <FinancialCard 
-          label="Ingresos Liquidados" 
-          value={formatCurrency(data.financials?.totalRevenue || 0)} 
-          icon={<DollarSign size={24} />}
-          color="text-emerald-500"
-          active={true}
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <FinancialCard
+          label="Ingresos liquidados"
+          value={formatCurrency(financials.totalRevenue || 0)}
+          icon={<DollarSign size={22} />}
+          color="text-emerald-600"
+          active
         />
-        <FinancialCard 
-          label="Estructura de Gastos" 
-          value={formatCurrency(data.kpis?.estimatedCosts || 0)} 
-          icon={<Briefcase size={24} />}
-          color="text-rose-500"
+        <FinancialCard
+          label="Transacciones"
+          value={financials.totalTransactions || 0}
+          icon={<ReceiptText size={22} />}
+          color="text-blue-600"
         />
-        <FinancialCard 
-          label="Utilidad Operativa" 
-          value={formatCurrency(data.kpis?.grossProfit || 0)} 
-          icon={<TrendingUp size={24} />}
-          color="text-emerald-500"
+        <FinancialCard
+          label="Ticket por pago"
+          value={formatCurrency(financials.avgTransactionSize || 0)}
+          icon={<CreditCard size={22} />}
+          color="text-amber-600"
+        />
+        <FinancialCard
+          label="Utilidad bruta"
+          value={formatCurrency(financials.grossProfit || 0)}
+          icon={<ShieldCheck size={22} />}
+          color="text-emerald-600"
         />
       </div>
 
-      <div className="bg-white rounded-[4rem] p-16 border border-slate-100 shadow-3xl text-center relative overflow-hidden group">
-         <div className="absolute top-0 right-0 p-16 opacity-[0.03] group-hover:opacity-10 transition-all pointer-events-none transform group-hover:scale-110">
-             <Target size={250} />
-         </div>
-         
-         <div className="max-w-2xl mx-auto relative z-10">
-            <div className="w-28 h-28 bg-slate-900 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-2xl border-4 border-slate-800 transform rotate-6 group-hover:rotate-0 transition-all duration-700">
-              <Target className="text-primary" size={48} />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <section className="xl:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-black text-slate-900">Resumen por metodo de pago</h3>
+              <p className="text-sm text-slate-500">Montos liquidados directamente desde caja.</p>
             </div>
-            <h3 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter uppercase leading-none">Umbral de Rentabilidad</h3>
-            <p className="text-slate-400 font-medium text-lg mb-12 leading-relaxed max-w-lg mx-auto">
-               Cálculo algorítmico del punto de equilibrio basado en costos fijos y variables del trimestre actual.
-            </p>
-            
-            <div className="relative pt-1 space-y-6">
-              <div className="flex items-center justify-between px-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
-                   <ShieldCheck size={16} className="text-primary" />
-                   Cobertura de Costos Fijos
-                </span>
-                <span className="text-3xl font-black text-slate-900 tracking-tighter">
-                   {progress}%
-                </span>
-              </div>
-              
-              <div className="overflow-hidden h-6 mb-4 text-xs flex rounded-full bg-slate-100 border-4 border-slate-100 shadow-inner">
-                <div style={{ width: `${progress}%` }} className="shadow-lg flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-out rounded-full relative overflow-hidden">
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-                </div>
-              </div>
-              
-              <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100/50 inline-block px-10">
-                 <p className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none">
-                    Diferencial Operativo: <span className="text-primary ml-2">{formatCurrency(Math.max(0, (data.financials?.totalRevenue || 0) * 0.22))}</span>
-                 </p>
-              </div>
+            <Link to="/pos/cash-closing" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+              <Banknote size={16} />
+              Ir a corte de caja
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="px-5 py-3 text-left text-[11px] font-black text-slate-500 uppercase tracking-widest">Metodo</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest">Total</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest">Participacion</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {methods.map(([method, total]) => {
+                  const percent = Number(summary.totalSales || 0) > 0
+                    ? (Number(total || 0) / Number(summary.totalSales || 0)) * 100
+                    : 0
+
+                  return (
+                    <tr key={method} className="hover:bg-slate-50">
+                      <td className="px-5 py-4 font-black text-slate-900">{methodLabels[method] || method}</td>
+                      <td className="px-5 py-4 text-right font-black text-slate-900">{formatCurrency(total)}</td>
+                      <td className="px-5 py-4 text-right font-bold text-slate-600">{percent.toFixed(1)}%</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {methods.length === 0 && (
+            <div className="py-16 text-center">
+              <h3 className="text-lg font-black text-slate-900">Sin pagos en el periodo</h3>
+              <p className="text-sm text-slate-500 mt-1">El resumen financiero se llena al registrar pagos.</p>
             </div>
-         </div>
+          )}
+        </section>
+
+        <section className="bg-slate-900 text-white rounded-2xl p-6 shadow-sm">
+          <h3 className="text-xl font-black mb-2">Lectura contable del modulo</h3>
+          <p className="text-sm text-slate-300 mb-6">
+            Ventas usa `payments` como fuente. Costos usa recetas e inventario. No incluye renta, nomina ni gastos fijos.
+          </p>
+          <div className="space-y-4">
+            <Fact label="Fuente de venta" value="Pagos liquidados" />
+            <Fact label="Tipo de utilidad" value="Bruta por receta" />
+            <Fact label="Productos sin receta" value={summary.productsWithoutRecipe || 0} />
+            <Fact label="Costos pendientes" value={summary.productsWithoutCost || 0} />
+          </div>
+        </section>
       </div>
+    </div>
+  )
+}
+
+function Fact({ label, value }) {
+  return (
+    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+      <span className="text-xs font-black uppercase tracking-widest text-slate-400">{label}</span>
+      <span className="font-black text-white">{value}</span>
     </div>
   )
 }

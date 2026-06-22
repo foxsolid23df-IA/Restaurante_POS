@@ -1,105 +1,137 @@
-import { BarChart3, Coffee, TrendingUp, Package, Star } from 'lucide-react'
-import { 
-  BarChart, Bar, Cell, 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+import { Link } from 'react-router-dom'
+import { AlertTriangle, BarChart3, Package, Settings, TrendingUp } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from 'recharts'
 
-const COLORS = ['#10b981', '#059669', '#047857', '#065f46', '#064e3b'];
-
 export default function ProductPerformance({ data, formatCurrency }) {
-  const top10 = data.topProducts || []
+  const products = data.topProducts || []
+  const needsConfig = products.filter((product) => product.requiresConfiguration)
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
-      {/* Ranking Header Card */}
-      <div className="bg-white rounded-[4rem] p-12 border border-slate-100 shadow-2xl shadow-slate-200/50">
-         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {needsConfig.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="flex gap-4">
+            <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center">
+              <AlertTriangle size={22} />
+            </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4 uppercase tracking-tighter">
-                <div className="bg-primary/10 p-3 rounded-2xl text-primary">
-                  <Star size={24} fill="currentColor" />
-                </div>
-                Productos Estrella (Top Ingresos)
-              </h3>
-              <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest mt-2 px-1 border-l-4 border-primary ml-1 pl-4">Auditando el 80/20 de tu menú</p>
+              <h3 className="font-black text-amber-950">Productos sin margen confiable</h3>
+              <p className="text-sm font-medium text-amber-800">
+                {needsConfig.length} producto(s) vendidos requieren receta o costo de insumos.
+              </p>
             </div>
-            <div className="bg-slate-50 px-6 py-4 rounded-3xl border border-slate-100 flex items-center gap-4">
-               <Package className="text-slate-300" size={20} />
-               <span className="text-xs font-black text-slate-900 uppercase tracking-widest">{top10.length} SKU's Analizados</span>
-            </div>
-         </div>
+          </div>
+          <Link to="/admin/catalog" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-amber-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+            <Settings size={16} />
+            Revisar catalogo
+          </Link>
+        </div>
+      )}
 
-         <div className="h-[500px] w-full">
-           <ResponsiveContainer width="100%" height="100%">
-             <BarChart data={top10} layout="vertical" margin={{ left: 20, right: 40, top: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="8 8" horizontal={false} stroke="#f1f5f9" />
-                <XAxis type="number" axisLine={false} tickLine={false} hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#1e293b', fontWeight: 900, fontSize: 11}} 
-                  width={200}
-                />
-                <Tooltip 
-                   cursor={{fill: '#f8fafc', radius: [0, 20, 20, 0]}}
-                   contentStyle={{
-                     borderRadius: '2rem', 
-                     border: '1px solid #f1f5f9', 
-                     boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)',
-                     padding: '1.5rem',
-                     fontWeight: 900,
-                     fontSize: '12px'
-                   }}
-                   formatter={(value) => [formatCurrency(value), 'RECAUDACIÓN BRUTA']}
-                   labelStyle={{color: '#10b981', marginBottom: '8px', textTransform: 'uppercase'}}
-                />
-                <Bar dataKey="revenue" fill="#10b981" radius={[0, 20, 20, 0]} barSize={40}>
-                   {top10.map((_, index) => (
-                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                   ))}
-                </Bar>
-             </BarChart>
-           </ResponsiveContainer>
-         </div>
-      </div>
+      <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <BarChart3 size={20} className="text-primary" />
+              Ranking de productos
+            </h3>
+            <p className="text-sm text-slate-500">Ingresos, unidades y margen bruto por receta.</p>
+          </div>
+          <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest">
+            <Package size={15} />
+            {products.length} analizados
+          </span>
+        </div>
 
-      {/* Detail Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-         {top10.slice(0, 4).map((product, i) => (
-           <div key={i} className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-xl flex items-center justify-between group hover:border-primary hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 relative overflow-hidden">
-              {i === 0 && (
-                <div className="absolute top-0 right-0">
-                   <div className="bg-amber-400 text-amber-900 font-black text-[10px] px-8 py-2 rounded-bl-3xl uppercase tracking-[0.2em] shadow-lg">Ganador #1</div>
-                </div>
-              )}
-              <div className="flex items-center gap-8">
-                <div className={`w-20 h-20 rounded-[2.2rem] flex items-center justify-center shadow-inner transform group-hover:rotate-12 transition-all ${
-                  i === 0 ? 'bg-amber-50 text-amber-500 border border-amber-100' : 'bg-slate-50 text-slate-300 border border-slate-100'
-                }`}>
-                   <Coffee size={36} />
-                </div>
-                <div>
-                  <h4 className="text-2xl font-black text-slate-900 tracking-tighter leading-none mb-3 group-hover:text-primary transition-colors">{product.name}</h4>
-                  <div className="flex items-center gap-3">
-                    <span className="bg-emerald-50 text-emerald-600 font-black text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest border border-emerald-100 flex items-center gap-2">
-                       <TrendingUp size={10} />
-                       {(product.profitability * 100).toFixed(1)}% Rentabilidad
+        {products.length > 0 ? (
+          <div className="h-[430px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={products.slice(0, 10)} layout="vertical" margin={{ left: 20, right: 40 }}>
+                <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#e2e8f0" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={190} tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(value, name) => [name === 'revenue' ? formatCurrency(value) : value, name === 'revenue' ? 'Ingresos' : 'Unidades']} />
+                <Bar dataKey="revenue" fill="#059669" radius={[0, 10, 10, 0]} barSize={28} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <EmptyState title="Sin productos vendidos" text="Cuando existan pagos liquidados se mostrara el ranking del periodo." />
+        )}
+      </section>
+
+      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-lg font-black text-slate-900">Detalle de rendimiento</h3>
+          <Link to="/admin/purchases" className="text-xs font-black uppercase tracking-widest text-primary hover:text-emerald-700">
+            Crear compra sugerida
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px]">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-5 py-3 text-left text-[11px] font-black text-slate-500 uppercase tracking-widest">Producto</th>
+                <th className="px-5 py-3 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest">Unidades</th>
+                <th className="px-5 py-3 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest">Ingresos</th>
+                <th className="px-5 py-3 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest">Costo receta</th>
+                <th className="px-5 py-3 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest">Utilidad bruta</th>
+                <th className="px-5 py-3 text-center text-[11px] font-black text-slate-500 uppercase tracking-widest">Margen</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {products.map((product) => (
+                <tr key={product.id || product.name} className="hover:bg-slate-50">
+                  <td className="px-5 py-4">
+                    <div className="font-black text-slate-900">{product.name}</div>
+                    <div className="text-xs font-medium text-slate-500">{product.category || 'Sin categoria'}</div>
+                    {product.requiresConfiguration && (
+                      <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2 py-1 rounded-lg">
+                        <AlertTriangle size={11} />
+                        Configurar receta/costo
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-right font-bold text-slate-700">{Number(product.quantity || 0).toFixed(0)}</td>
+                  <td className="px-5 py-4 text-right font-black text-slate-900">{formatCurrency(product.revenue || 0)}</td>
+                  <td className="px-5 py-4 text-right font-bold text-slate-700">{formatCurrency(product.totalCost || 0)}</td>
+                  <td className="px-5 py-4 text-right font-black text-slate-900">{formatCurrency(product.profit || 0)}</td>
+                  <td className="px-5 py-4 text-center">
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black ${
+                      product.requiresConfiguration
+                        ? 'bg-amber-50 text-amber-700'
+                        : Number(product.profitMargin || 0) >= 30
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-rose-50 text-rose-700'
+                    }`}>
+                      <TrendingUp size={12} />
+                      {Number(product.profitMargin || 0).toFixed(1)}%
                     </span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-black text-slate-900 tracking-tighter">{formatCurrency(product.revenue)}</p>
-                <div className="bg-slate-50 px-5 py-2 rounded-2xl border border-slate-100 mt-2 flex items-center justify-end gap-2">
-                   <Package size={14} className="text-slate-300" />
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{product.quantity} Uds.</span>
-                </div>
-              </div>
-           </div>
-         ))}
-      </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {products.length === 0 && <EmptyState title="Sin ventas de productos" text="No hay items pagados en este rango de fechas." />}
+      </section>
+    </div>
+  )
+}
+
+function EmptyState({ title, text }) {
+  return (
+    <div className="py-16 px-6 text-center">
+      <h3 className="text-lg font-black text-slate-900">{title}</h3>
+      <p className="text-sm text-slate-500 mt-1">{text}</p>
     </div>
   )
 }

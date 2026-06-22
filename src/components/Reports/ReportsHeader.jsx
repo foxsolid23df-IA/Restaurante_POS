@@ -1,56 +1,56 @@
-import { Download, BarChart3, ShoppingCart, TrendingUp, Zap, Target, Sparkles } from 'lucide-react'
+import { BarChart3, Download, Package, ReceiptText, ShoppingCart, TrendingUp, WalletCards } from 'lucide-react'
 
 export default function ReportsHeader({ activeTab, setActiveTab, onExport }) {
   const tabs = [
-    { id: 'overview', label: 'Dashboard', icon: BarChart3 },
-    { id: 'products', label: 'Logística', icon: ShoppingCart },
-    { id: 'profitability', label: 'Rendimiento', icon: TrendingUp },
-    { id: 'financial', label: 'Auditoría', icon: Zap },
-    { id: 'forecast', label: 'Proyecciones', icon: Target },
+    { id: 'overview', label: 'Ventas', icon: BarChart3 },
+    { id: 'products', label: 'Productos', icon: Package },
+    { id: 'profitability', label: 'Rentabilidad', icon: TrendingUp },
+    { id: 'financial', label: 'Caja', icon: WalletCards },
+    { id: 'forecast', label: 'Forecast', icon: ShoppingCart }
   ]
 
   return (
-    <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 mb-12">
-      <div className="flex items-center gap-6">
-        <div className="bg-slate-900 text-white p-5 rounded-[2rem] shadow-2xl shadow-slate-200 border border-slate-800 transform -rotate-3 hover:rotate-0 transition-all duration-500">
-          <BarChart3 size={32} className="text-primary" />
-        </div>
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Business Intelligence</h1>
-          <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.25em] mt-2 flex items-center gap-2">
-             <Sparkles size={12} className="text-primary" />
-             Análisis de Núcleo Operativo v4.0
-          </p>
+    <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-11 h-11 rounded-xl bg-slate-900 text-primary flex items-center justify-center">
+            <ReceiptText size={22} />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Reportes y ventas</h1>
+            <p className="text-sm font-medium text-slate-500">Pagos, productos, margen bruto y compra sugerida.</p>
+          </div>
         </div>
       </div>
-      
-      <div className="flex flex-col sm:flex-row items-center gap-6 w-full xl:w-auto">
-        <div className="bg-white p-2 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-wrap justify-center w-full sm:w-auto">
+
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full xl:w-auto">
+        <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-1">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
+
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-6 py-4 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest transition-all ${
-                  isActive 
-                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-300' 
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${
+                  isActive
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <Icon size={16} className={isActive ? 'text-primary' : 'text-slate-300'} />
+                <Icon size={15} className={isActive ? 'text-primary' : 'text-slate-400'} />
                 {tab.label}
               </button>
             )
           })}
         </div>
-        
+
         <button
           onClick={onExport}
-          className="bg-primary text-white px-8 py-5 rounded-[2rem] font-black flex items-center gap-3 shadow-2xl shadow-emerald-200 hover:bg-emerald-600 transition-all active:scale-95 text-xs uppercase tracking-widest w-full sm:w-auto justify-center"
+          className="bg-primary text-white px-5 py-3 rounded-xl font-black flex items-center gap-2 shadow-sm hover:bg-emerald-700 transition-colors text-xs uppercase tracking-widest justify-center"
         >
-          <Download size={20} />
+          <Download size={17} />
           Exportar
         </button>
       </div>
