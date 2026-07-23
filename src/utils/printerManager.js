@@ -321,7 +321,7 @@ export class PrinterManager {
 
   // Probar impresora
   async testPrinter(printer) {
-    const testData = this.formatText('PRINTER TEST', { align: 'center', bold: true })
+    let testData = this.formatText('PRINTER TEST', { align: 'center', bold: true })
     testData += this.generateDivider()
     testData += this.formatText(`Printer: ${printer.name}`)
     testData += this.formatText(`Type: ${printer.type}`)
