@@ -70,11 +70,7 @@ export function useCustomers() {
 
     try {
       const result = await crmApi.deactivateOrDeleteCustomer(id)
-      if (result.action === 'deleted') {
-        setCustomers((prev) => prev.filter((customer) => customer.id !== id))
-      } else {
-        setCustomers((prev) => prev.filter((customer) => customer.id !== id))
-      }
+      setCustomers((prev) => prev.filter((customer) => customer.id !== id))
       return result
     } catch (err) {
       console.error('Error deleting customer:', err)

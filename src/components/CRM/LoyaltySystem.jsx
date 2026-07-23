@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { 
   Award, TrendingUp, Star, Crown, Zap, Gift, 
   ChevronRight, Sparkles, Plus, Edit3, Trash2, 
@@ -16,6 +16,19 @@ export default function LoyaltySystem({ customers }) {
   const [showEditor, setShowEditor] = useState(false)
   const [showAudit, setShowAudit] = useState(false)
   const [isActionLoading, setIsActionLoading] = useState(false)
+  const [savingField, setSavingField] = useState(null)
+  const debounceTimers = useRef({})
+
+  const debouncedUpdateSettings = useCallback((field, value) => {
+    if (debounceTimers.current[field]) {
+      clearTimeout(debounceTimers.current[field])
+    }
+    setSavingField(field)
+    debounceTimers.current[field] = setTimeout(() => {
+      updateSettings({ ...settings, [field]: value })
+      setSavingField(null)
+    }, 500)
+  }, [settings, updateSettings])
 
   const totalPoints = useMemo(() => 
     customers.reduce((sum, c) => sum + (c.loyalty_points || 0), 0), 
@@ -165,12 +178,23 @@ export default function LoyaltySystem({ customers }) {
                       <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Por cada gasto de</p>
                       <div className="flex items-center gap-3">
                          <span className="text-3xl font-black text-slate-900">$</span>
-                         <input 
-                           type="number" 
-                           value={settings?.currency_unit_amount || 10}
-                           onChange={(e) => updateSettings({ ...settings, currency_unit_amount: parseFloat(e.target.value) })}
-                           className="w-32 bg-white border border-slate-200 rounded-2xl px-5 py-3 font-black text-2xl text-slate-900 outline-none focus:border-primary transition-all shadow-sm"
-                         />
+                         <div className="relative">
+                           <input 
+                             type="number" 
+                             value={settings?.currency_unit_amount || 10}
+                             onChange={(e) => debouncedUpdateSettings('currency_unit_amount', parseFloat(e.target.value))}
+                             className={`w-32 bg-white border rounded-2xl px-5 py-3 font-black text-2xl text-slate-900 outline-none focus:border-primary transition-all shadow-sm ${
+                               savingField === 'currency_unit_amount' 
+                                 ? 'border-amber-400 bg-amber-50 animate-pulse' 
+                                 : 'border-slate-200'
+                             }`}
+                           />
+                           {savingField === 'currency_unit_amount' && (
+                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                               <Loader2 size={14} className="text-amber-500 animate-spin" />
+                             </div>
+                           )}
+                         </div>
                       </div>
                    </div>
 
@@ -181,12 +205,23 @@ export default function LoyaltySystem({ customers }) {
                    <div className="text-center md:text-left">
                       <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">El cliente gana</p>
                       <div className="flex items-center gap-3">
-                         <input 
-                           type="number" 
-                           value={settings?.points_per_currency || 1}
-                           onChange={(e) => updateSettings({ ...settings, points_per_currency: parseInt(e.target.value) })}
-                           className="w-24 bg-white border border-slate-200 rounded-2xl px-5 py-3 font-black text-2xl text-slate-900 outline-none focus:border-primary transition-all shadow-sm text-center"
-                         />
+                         <div className="relative">
+                           <input 
+                             type="number" 
+                             value={settings?.points_per_currency || 1}
+                             onChange={(e) => debouncedUpdateSettings('points_per_currency', parseInt(e.target.value))}
+                             className={`w-24 bg-white border rounded-2xl px-5 py-3 font-black text-2xl text-slate-900 outline-none focus:border-primary transition-all shadow-sm text-center ${
+                               savingField === 'points_per_currency' 
+                                 ? 'border-amber-400 bg-amber-50 animate-pulse' 
+                                 : 'border-slate-200'
+                             }`}
+                           />
+                           {savingField === 'points_per_currency' && (
+                             <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                               <Loader2 size={12} className="text-amber-500 animate-spin" />
+                             </div>
+                           )}
+                         </div>
                          <span className="text-xs font-black text-primary uppercase tracking-widest">Punto</span>
                       </div>
                    </div>
@@ -200,12 +235,19 @@ export default function LoyaltySystem({ customers }) {
                       <ShieldCheck size={16} className="text-rose-500" />
                       <div className="flex flex-col">
                          <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">Alerta de Fraude (+ de)</span>
-                         <input 
-                           type="number" 
-                           value={settings?.daily_points_limit || 1000}
-                           onChange={(e) => updateSettings({ ...settings, daily_points_limit: parseInt(e.target.value) })}
-                           className="bg-transparent font-black text-rose-600 outline-none w-16 text-xs"
-                         />
+                         <div className="relative">
+                           <input 
+                              type="number" 
+                              value={settings?.daily_points_limit || 1000}
+                              onChange={(e) => debouncedUpdateSettings('daily_points_limit', parseInt(e.target.value))}
+                              className={`bg-transparent font-black text-rose-600 outline-none w-16 text-xs ${
+                                savingField === 'daily_points_limit' ? 'animate-pulse' : ''
+                              }`}
+                            />
+                            {savingField === 'daily_points_limit' && (
+                              <Loader2 size={10} className="absolute -right-4 top-1/2 -translate-y-1/2 text-amber-500 animate-spin" />
+                            )}
+                         </div>
                       </div>
                       <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">PTS / DIA</span>
                    </div>

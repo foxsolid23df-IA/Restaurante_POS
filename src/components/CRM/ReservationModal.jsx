@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Calendar, Clock, Users, MapPin, Save, Loader2, Search } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { crmApi } from '@/features/crm/api/crmApi'
 
 export default function ReservationModal({ onClose, onSubmit, loading, customers }) {
   const [formData, setFormData] = useState({
@@ -16,13 +16,8 @@ export default function ReservationModal({ onClose, onSubmit, loading, customers
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
-    fetchTables()
+    crmApi.getTables().then(setTables).catch(() => setTables([]))
   }, [])
-
-  const fetchTables = async () => {
-    const { data } = await supabase.from('tables').select('id, name').order('name')
-    setTables(data || [])
-  }
 
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

@@ -26,3 +26,7 @@ pnpm-debug.log*
 !.env.example
 
 .vercel
+
+# Electron build outputs
+out/
+release/

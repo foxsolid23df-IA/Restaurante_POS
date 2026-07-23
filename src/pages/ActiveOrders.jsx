@@ -45,7 +45,7 @@ export default function ActiveOrders() {
         .select(`
           *,
           tables (name, areas(name)),
-          profiles (full_name),
+          profiles!user_id (full_name),
           order_items (
             *,
             products (name, price)

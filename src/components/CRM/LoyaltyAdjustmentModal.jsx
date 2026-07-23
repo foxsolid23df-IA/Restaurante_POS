@@ -9,6 +9,7 @@ export default function LoyaltyAdjustmentModal({ customer, onClose, onUpdate }) 
   const [reason, setReason] = useState('')
   const [transactions, setTransactions] = useState([])
   const [loadingTx, setLoadingTx] = useState(false)
+  const [optimisticPoints, setOptimisticPoints] = useState(null)
 
   useEffect(() => {
     fetchTx()
@@ -25,12 +26,20 @@ export default function LoyaltyAdjustmentModal({ customer, onClose, onUpdate }) 
     e.preventDefault()
     if (points === 0) return
     
+    // Optimistic UI: calculate new points immediately
+    const currentPoints = optimisticPoints ?? (customer.loyalty_points || 0)
+    const delta = type === 'redeem' ? -Math.abs(points) : Math.abs(points)
+    setOptimisticPoints(currentPoints + delta)
+    
     const success = await adjustPoints(customer.id, points, type, reason || 'Ajuste manual')
     if (success) {
       if (onUpdate) onUpdate()
       fetchTx()
       setPoints(0)
       setReason('')
+    } else {
+      // Revert on error
+      setOptimisticPoints(null)
     }
   }
 
@@ -74,12 +83,13 @@ export default function LoyaltyAdjustmentModal({ customer, onClose, onUpdate }) 
                   >
                      <Minus size={20} />
                   </button>
-                  <input 
-                    type="number" 
-                    value={points}
-                    onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-                    className="w-28 text-center text-5xl font-black text-slate-900 bg-transparent outline-none tracking-tighter"
-                  />
+                   <input 
+                     type="number" 
+                     min="0"
+                     value={points}
+                     onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
+                     className="w-28 text-center text-5xl font-black text-slate-900 bg-transparent outline-none tracking-tighter"
+                   />
                   <button 
                     type="button"
                     onClick={() => setPoints(p => p + 50)}
@@ -88,7 +98,19 @@ export default function LoyaltyAdjustmentModal({ customer, onClose, onUpdate }) 
                      <Plus size={20} />
                   </button>
                </div>
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Puntos a procesar</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Puntos a procesar</p>
+               
+               {points > 0 && (
+                 <div className="flex items-center gap-3 mt-2 px-4 py-2 bg-slate-100 rounded-2xl">
+                   <span className="text-xs font-bold text-slate-500">
+                     {(optimisticPoints ?? (customer.loyalty_points || 0)).toLocaleString()} pts
+                   </span>
+                   <ArrowRight size={14} className="text-primary" />
+                   <span className={`text-xs font-black ${type === 'redeem' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                     {((optimisticPoints ?? (customer.loyalty_points || 0)) + (type === 'redeem' ? -points : points)).toLocaleString()} pts
+                   </span>
+                 </div>
+               )}
             </div>
 
             <div className="space-y-3">

@@ -1,4 +1,5 @@
-import { Building2, Loader2, Mail, MapPin, Phone, Save, ShieldCheck, X } from 'lucide-react'
+import { Building2, DollarSign, Loader2, Mail, MapPin, Phone, Save, ShieldCheck, X } from 'lucide-react'
+import { getCurrencyList } from '@/features/i18n/currency'
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50'
 
@@ -93,6 +94,18 @@ export default function BranchModal({
                 className={inputClass}
                 placeholder="America/Mexico_City"
               />
+            </Field>
+
+            <Field label="Moneda" icon={<DollarSign size={14} />}>
+              <select
+                value={formData.currency || 'MXN'}
+                onChange={(event) => setFormData({ ...formData, currency: event.target.value })}
+                className={inputClass}
+              >
+                {getCurrencyList().map((c) => (
+                  <option key={c.code} value={c.code}>{c.symbol} — {c.name} ({c.code})</option>
+                ))}
+              </select>
             </Field>
           </div>
 

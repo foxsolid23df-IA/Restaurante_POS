@@ -325,7 +325,7 @@ export const inventoryApi = {
     if (!branchId) return []
     let query = supabase
       .from('purchases')
-      .select('*, suppliers(name, category), profiles(full_name)')
+      .select('*, suppliers(name, category), profiles!user_id(full_name)')
       .eq('branch_id', branchId)
       .order('purchase_date', { ascending: false })
 

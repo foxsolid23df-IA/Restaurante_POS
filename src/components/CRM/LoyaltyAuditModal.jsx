@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
-import { X, ShieldCheck, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCcw } from 'lucide-react'
+import { X, ShieldCheck, Search, Filter, ArrowUpRight, ArrowDownRight, RefreshCcw, Calendar } from 'lucide-react'
 import { useLoyalty } from '@/hooks/useLoyalty'
+import { toast } from 'sonner'
+
 export default function LoyaltyAuditModal({ onClose }) {
   const { getAllTransactions, loading } = useLoyalty()
   const [transactions, setTransactions] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showDateFilter, setShowDateFilter] = useState(false)
 
   const loadTransactions = async () => {
     try {
       const data = await getAllTransactions()
       setTransactions(data)
     } catch (err) {
-      console.error(err)
+      toast.error('No se pudieron cargar las transacciones')
     }
   }
 
@@ -19,10 +24,19 @@ export default function LoyaltyAuditModal({ onClose }) {
     loadTransactions()
   }, [])
 
-  const filtered = transactions.filter(tx => 
-    tx.customers?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tx.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filtered = transactions.filter(tx => {
+    const matchesSearch = tx.customers?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tx.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    if (!dateFrom && !dateTo) return matchesSearch
+    
+    const txDate = new Date(tx.created_at)
+    const from = dateFrom ? new Date(dateFrom) : null
+    const to = dateTo ? new Date(dateTo + 'T23:59:59') : null
+    
+    const matchesDate = (!from || txDate >= from) && (!to || txDate <= to)
+    return matchesSearch && matchesDate
+  })
 
   const formatDate = (dateString) => {
     return new Intl.DateTimeFormat('es-ES', {
@@ -72,26 +86,70 @@ export default function LoyaltyAuditModal({ onClose }) {
         </div>
 
         {/* Toolbar */}
-        <div className="p-8 bg-slate-50 border-b border-slate-100 flex gap-6">
-           <div className="relative flex-1 group">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={20} />
-              <input 
-                type="text"
-                placeholder="Filtrar por cliente, descripción o folio..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-[1.5rem] pl-16 pr-8 py-4 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-primary/5 transition-all shadow-sm"
-              />
-           </div>
-           <button className="flex items-center gap-3 px-8 py-4 bg-white border border-slate-200 rounded-[1.5rem] font-bold text-slate-400 hover:text-slate-900 transition-all shadow-sm">
-             <Filter size={18} />
-             Filtrar Fecha
-           </button>
+        <div className="p-8 bg-slate-50 border-b border-slate-100">
+          <div className="flex gap-6">
+             <div className="relative flex-1 group">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={20} />
+                <input 
+                  type="text"
+                  placeholder="Filtrar por cliente, descripción o folio..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-[1.5rem] pl-16 pr-8 py-4 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-primary/5 transition-all shadow-sm"
+                />
+             </div>
+             <button 
+               onClick={() => setShowDateFilter(!showDateFilter)}
+               className={`flex items-center gap-3 px-8 py-4 bg-white border rounded-[1.5rem] font-bold transition-all shadow-sm ${
+                 showDateFilter || dateFrom || dateTo 
+                   ? 'border-primary text-primary' 
+                   : 'border-slate-200 text-slate-400 hover:text-slate-900'
+               }`}
+             >
+               <Filter size={18} />
+               Filtrar Fecha
+               {(dateFrom || dateTo) && (
+                 <span className="w-2 h-2 bg-primary rounded-full" />
+               )}
+             </button>
+          </div>
+          
+          {showDateFilter && (
+            <div className="flex gap-4 mt-4 items-center">
+              <div className="flex items-center gap-2">
+                <Calendar size={14} className="text-slate-400" />
+                <span className="text-xs font-bold text-slate-500">Desde:</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500">Hasta:</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo('') }}
+                  className="text-xs font-bold text-rose-500 hover:text-rose-700 transition-colors"
+                >
+                  Limpiar fechas
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Transactions Table */}
         <div className="flex-1 overflow-y-auto no-scrollbar p-8">
-           <table className="w-full">
+           <table className="w-full" aria-label="Historial de transacciones de lealtad">
               <thead className="sticky top-0 bg-white z-10">
                  <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left border-b border-slate-50">
                     <th className="pb-6 pl-6">Fecha y Hora</th>
@@ -119,9 +177,9 @@ export default function LoyaltyAuditModal({ onClose }) {
                       <td className="py-6">
                          <div className="flex items-center gap-3">
                             <span className="text-slate-900 font-medium text-sm">{tx.description}</span>
-                            {tx.order_id && (
-                              <span className="bg-slate-100 text-slate-500 text-[8px] font-black px-2 py-1 rounded-md uppercase">Folio {tx.order_id.slice(0, 5)}</span>
-                            )}
+                             {tx.order_id && (
+                               <span className="bg-slate-100 text-slate-500 text-[8px] font-black px-2 py-1 rounded-md uppercase">Folio {String(tx.order_id).slice(0, 5)}</span>
+                             )}
                          </div>
                       </td>
                       <td className="py-6">

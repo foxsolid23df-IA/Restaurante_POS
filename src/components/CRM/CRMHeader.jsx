@@ -1,6 +1,28 @@
+import { useState, useEffect } from 'react'
 import { Search, UserPlus, Users, Calendar, Award } from 'lucide-react'
 
+function useDebounce(value, delay = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return debouncedValue
+}
+
 export default function CRMHeader({ activeTab, setActiveTab, searchTerm, setSearchTerm, onAddCustomer, onAddReservation }) {
+  const [localSearch, setLocalSearch] = useState(searchTerm)
+  const debouncedSearch = useDebounce(localSearch, 300)
+
+  useEffect(() => {
+    setSearchTerm(debouncedSearch)
+  }, [debouncedSearch, setSearchTerm])
+
   const tabs = [
     { id: 'customers', label: 'Directorio', icon: Users },
     { id: 'reservations', label: 'Reservaciones', icon: Calendar },
@@ -61,8 +83,8 @@ export default function CRMHeader({ activeTab, setActiveTab, searchTerm, setSear
           <input 
             type="text"
             placeholder="Buscar por nombre, tel o folio..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             className="w-full bg-slate-50 border border-slate-100 rounded-[1.8rem] pl-16 pr-8 py-4 font-bold text-slate-900 outline-none focus:ring-4 focus:ring-primary/5 transition-all"
           />
         </div>

@@ -1,7 +1,9 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useReservations } from '@/hooks/useReservations'
-import { AlertTriangle, Award, CalendarClock, Loader2, Users } from 'lucide-react'
+import { useOrders } from '@/hooks/useOrders'
+import { useCustomerAnalytics } from '@/hooks/useCustomerAnalytics'
+import { AlertTriangle, Award, CalendarClock, Loader2, Users, TrendingUp, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import { useBranchStore } from '@/store/branchStore'
@@ -16,6 +18,7 @@ import CustomerModal from '@/components/CRM/CustomerModal'
 import CustomerHistoryModal from '@/components/CRM/CustomerHistoryModal'
 import LoyaltyAdjustmentModal from '@/components/CRM/LoyaltyAdjustmentModal'
 import ReservationModal from '@/components/CRM/ReservationModal'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 export default function CRM() {
   const { settings, fetchSettings } = useBusinessStore()
@@ -40,6 +43,9 @@ export default function CRM() {
     updateReservationStatus 
   } = useReservations()
 
+  const { orders } = useOrders()
+  const { totalLTV, aov, retentionRate, topSpenders } = useCustomerAnalytics(customers, orders)
+
   const [activeTab, setActiveTab] = useState('customers')
   const [searchTerm, setSearchTerm] = useState('')
   const [showCustomerModal, setShowCustomerModal] = useState(false)
@@ -50,6 +56,7 @@ export default function CRM() {
   const [actionLoading, setActionLoading] = useState(false)
   const [dashboard, setDashboard] = useState({})
   const [customerFilter, setCustomerFilter] = useState('active')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => {
     let mounted = true
@@ -110,15 +117,22 @@ export default function CRM() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm("¿Deseas desvincular a este cliente de la red?")) return
+    const customer = customers.find(c => c.id === id)
+    setConfirmDelete({ id, name: customer?.name || 'este cliente' })
+  }
+
+  const confirmDeleteCustomer = async () => {
+    if (!confirmDelete) return
     try {
       setActionLoading(true)
-      const result = await deleteCustomer(id)
+      const result = await crmApi.deactivateOrDeleteCustomer(confirmDelete.id)
+      setCustomers((prev) => prev.filter((c) => c.id !== confirmDelete.id))
       toast.success(result?.action === 'deactivated' ? 'Cliente desactivado; conserva historial' : 'Cliente eliminado del CRM')
     } catch (error) {
       toast.error(error.message)
     } finally {
       setActionLoading(false)
+      setConfirmDelete(null)
     }
   }
 
@@ -167,11 +181,13 @@ export default function CRM() {
         dashboard={dashboard}
       />
 
-      <section className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <section className="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
         <MetricCard icon={Users} label="Clientes activos" value={dashboard.activeCustomers || 0} />
         <MetricCard icon={Award} label="Puntos en circulacion" value={dashboard.pointsInCirculation || 0} />
         <MetricCard icon={CalendarClock} label="Reservas proximas" value={dashboard.reservationsUpcoming || 0} />
         <MetricCard icon={AlertTriangle} label="Alertas de lealtad" value={dashboard.loyaltyAlerts || 0} danger={dashboard.loyaltyAlerts > 0} />
+        <MetricCard icon={DollarSign} label="Ticket promedio" value={`$${aov.toFixed(0)}`} />
+        <MetricCard icon={TrendingUp} label="Retencion" value={`${retentionRate.toFixed(0)}%`} />
       </section>
 
       {activeTab === 'customers' && (
@@ -207,6 +223,7 @@ export default function CRM() {
             onDelete={handleDelete}
             onViewHistory={(c) => { setEditingCustomer(c); setShowHistoryModal(true); }}
             onAdjustPoints={(c) => { setEditingCustomer(c); setShowLoyaltyModal(true); }}
+            onAddCustomer={() => { setEditingCustomer(null); setShowCustomerModal(true); }}
             loading={customersLoading && customers.length === 0}
           />
         )}
@@ -257,6 +274,16 @@ export default function CRM() {
           loading={actionLoading}
         />
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={confirmDeleteCustomer}
+        title="Eliminar Cliente"
+        message={`¿Estás seguro de eliminar a ${confirmDelete?.name}? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        danger
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Component, useEffect, Suspense } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from 'sonner'
@@ -6,6 +6,7 @@ import AdminLayout from '@/components/Layout/AdminLayout'
 import POSLayout from '@/components/Layout/POSLayout'
 import Login from '@/pages/Login'
 import PINLogin from '@/pages/PINLogin'
+import ActivateLicense from '@/pages/ActivateLicense'
 import AdminDashboard from '@/pages/Dashboard'
 import Inventory from '@/pages/admin/Inventory'
 import Products from '@/pages/admin/Products'
@@ -28,12 +29,18 @@ import Delivery from '@/pages/Delivery'
 import DeliveryOptimizer from '@/pages/DeliveryOptimizer'
 import Purchases from '@/pages/admin/Purchases'
 import Settings from '@/pages/admin/Settings'
+import Licenses from '@/pages/admin/Licenses'
 import { useBranchStore } from '@/store/branchStore'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import Branches from '@/pages/admin/Branches'
 import SplitBill from '@/pages/SplitBill'
 import SalonLayout from '@/pages/admin/SalonLayout'
+import CustomerMenu from '@/pages/public/CustomerMenu'
 import { hasPermission } from '@/hooks/useRolePermissions'
+import { isElectron } from '@/lib/electronBridge'
+import OfflineStatusBar from '@/components/Electron/OfflineStatusBar'
+import UpdateNotification from '@/components/Updates/UpdateNotification'
+import ElectronSeedScreen from '@/components/Electron/ElectronSeedScreen'
 
 class AppErrorBoundary extends Component {
   constructor(props) {
@@ -140,65 +147,76 @@ function App() {
     fetchSettings()
   }, [initialize, fetchSettings])
 
+  const Router = isElectron ? HashRouter : BrowserRouter
+
   return (
-    <BrowserRouter>
-      <Toaster position="top-center" richColors />
-      <AppErrorBoundary>
-        <Suspense fallback={
-          <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] font-sans">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary/10 border-t-secondary mb-6" />
-            <p className="font-black text-primary tracking-[0.3em] text-[10px] uppercase animate-pulse">Restaurante Elite</p>
-          </div>
-        }>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/pin-login" element={<PINLogin />} />
-            
-            {/* Admin Portal */}
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} requireSession useAdminPermissions />}>
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="reports" element={<SalesReports />} />
-                <Route path="catalog" element={<Products />} />
-                <Route path="catalog/categories" element={<Categories />} />
-                <Route path="catalog/:productId/recipe" element={<RecipeBuilder />} />
-                <Route path="inventory" element={<Inventory />} />
-                <Route path="staff" element={<Users />} />
-                <Route path="crm" element={<CRM />} />
-                <Route path="purchases" element={<Purchases />} />
-                <Route path="branches" element={<Branches />} />
-                <Route path="salon" element={<SalonLayout />} />
-                <Route path="settings" element={<Settings />} />
+    <Router>
+      <ElectronSeedScreen>
+        <OfflineStatusBar />
+        <Toaster position="top-center" richColors />
+        <AppErrorBoundary>
+          <Suspense fallback={
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8fafc] font-sans">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-secondary/10 border-t-secondary mb-6" />
+              <p className="font-black text-primary tracking-[0.3em] text-[10px] uppercase animate-pulse">Restaurante Elite</p>
+            </div>
+          }>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/pin-login" element={<PINLogin />} />
+              <Route path="/activate" element={<ActivateLicense />} />
+              
+              {/* Admin Portal */}
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} requireSession useAdminPermissions />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="reports" element={<SalesReports />} />
+                  <Route path="catalog" element={<Products />} />
+                  <Route path="catalog/categories" element={<Categories />} />
+                  <Route path="catalog/:productId/recipe" element={<RecipeBuilder />} />
+                  <Route path="inventory" element={<Inventory />} />
+                  <Route path="staff" element={<Users />} />
+                  <Route path="crm" element={<CRM />} />
+                  <Route path="purchases" element={<Purchases />} />
+                  <Route path="branches" element={<Branches />} />
+                  <Route path="salon" element={<SalonLayout />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="licenses" element={<Licenses />} />
+                </Route>
               </Route>
-            </Route>
 
-            {/* POS Portal */}
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']} />}>
-              <Route path="/pos" element={<POSLayout />}>
-                <Route index element={<Navigate to="/pos/tables" replace />} />
-                <Route path="tables" element={<Tables />} />
-                <Route path="orders" element={<POS />} />
-                <Route path="active-orders" element={<ActiveOrders />} />
-                <Route path="kitchen" element={<KitchenOrders />} />
-                <Route path="bar" element={<BarOrders />} />
-                <Route path="delivery" element={<Delivery />} />
-                <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
-                <Route path="reservations" element={<Reservations />} />
-                <Route path="cash-closing" element={<CashClosing />} />
-                <Route path="daily-closing" element={<DailyClosing />} />
-                <Route path="loyalty" element={<LoyaltyProgram />} />
-                <Route path="customer/:id" element={<CustomerProfile />} />
-                <Route path="split-bill/:tableId" element={<SplitBill />} />
+              {/* POS Portal */}
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']} />}>
+                <Route path="/pos" element={<POSLayout />}>
+                  <Route index element={<Navigate to="/pos/tables" replace />} />
+                  <Route path="tables" element={<Tables />} />
+                  <Route path="orders" element={<POS />} />
+                  <Route path="active-orders" element={<ActiveOrders />} />
+                  <Route path="kitchen" element={<KitchenOrders />} />
+                  <Route path="bar" element={<BarOrders />} />
+                  <Route path="delivery" element={<Delivery />} />
+                  <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
+                  <Route path="reservations" element={<Reservations />} />
+                  <Route path="cash-closing" element={<CashClosing />} />
+                  <Route path="daily-closing" element={<DailyClosing />} />
+                  <Route path="loyalty" element={<LoyaltyProgram />} />
+                  <Route path="customer/:id" element={<CustomerProfile />} />
+                  <Route path="split-bill/:tableId" element={<SplitBill />} />
+                </Route>
               </Route>
-            </Route>
 
-            {/* Global Redirects */}
-            <Route path="/" element={<Navigate to="/pos" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </AppErrorBoundary>
-    </BrowserRouter>
+              {/* Public Routes */}
+              <Route path="/menu/:tableId" element={<CustomerMenu />} />
+
+              {/* Global Redirects */}
+              <Route path="/" element={<Navigate to="/pos" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </AppErrorBoundary>
+        <UpdateNotification />
+      </ElectronSeedScreen>
+    </Router>
   )
 }
 

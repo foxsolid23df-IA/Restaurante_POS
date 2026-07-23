@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   Award,
   BarChart3,
+  Key,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -27,7 +28,8 @@ const adminMenuItems = [
   { icon: ShoppingCart, label: 'Compras/Almacen', path: '/admin/purchases', permission: 'manage_inventory', roles: ['admin', 'manager', 'cashier'] },
   { icon: MapPin, label: 'Sucursales', path: '/admin/branches', roles: ['admin'] },
   { icon: LayoutGrid, label: 'Arquitectura de Salon', path: '/admin/salon', roles: ['admin', 'manager'] },
-  { icon: Settings, label: 'Configuracion', path: '/admin/settings', roles: ['admin'] }
+  { icon: Settings, label: 'Configuracion', path: '/admin/settings', roles: ['admin'] },
+  { icon: Key, label: 'Licencias', path: '/admin/licenses', roles: ['admin'] }
 ]
 
 export default function AdminSidebar() {

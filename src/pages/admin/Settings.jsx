@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertCircle, BadgeCheck, Gift, History, Loader2, Printer, Receipt, Settings as SettingsIcon, Store, Ticket } from 'lucide-react'
+import { AlertCircle, BadgeCheck, CreditCard, Gift, Globe, History, Link, Loader2, Printer, Receipt, Settings as SettingsIcon, Store, Ticket } from 'lucide-react'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import { useBranchStore } from '@/store/branchStore'
 import { settingsApi } from '@/features/settings/api/settingsApi'
@@ -9,13 +9,19 @@ import IdentitySettings from '@/components/Settings/IdentitySettings'
 import FiscalSettings from '@/components/Settings/FiscalSettings'
 import TicketSettings from '@/components/Settings/TicketSettings'
 import PrinterSettings from '@/components/Settings/PrinterSettings'
+import LanguageSettings from '@/components/Settings/LanguageSettings'
+import POSHardwareSettings from '@/components/Settings/POSHardwareSettings'
+import PaymentGatewaySettings from '@/components/Settings/PaymentGatewaySettings'
 
 const tabs = [
   { id: 'business', label: 'Negocio', icon: Store },
+  { id: 'language', label: 'Idioma y Moneda', icon: Globe },
   { id: 'fiscal', label: 'Fiscal', icon: Receipt },
   { id: 'ticket', label: 'Ticket', icon: Ticket },
   { id: 'loyalty', label: 'Lealtad', icon: Gift },
   { id: 'printers', label: 'Impresoras', icon: Printer },
+  { id: 'pos_hardware', label: 'POS Físico', icon: CreditCard },
+  { id: 'payment_gateway', label: 'Pasarela de Pago', icon: Link },
   { id: 'audit', label: 'Auditoría', icon: History }
 ]
 
@@ -39,7 +45,7 @@ export default function Settings() {
   const [pageError, setPageError] = useState(null)
 
   const activeTabData = useMemo(() => tabs.find((tab) => tab.id === activeTab), [activeTab])
-  const canSaveActiveTab = ['business', 'fiscal', 'ticket', 'loyalty'].includes(activeTab)
+  const canSaveActiveTab = ['business', 'language', 'fiscal', 'ticket', 'loyalty'].includes(activeTab)
 
   const loadData = async () => {
     setPageError(null)
@@ -160,10 +166,13 @@ export default function Settings() {
         </div>
 
         {activeTab === 'business' && <IdentitySettings formData={formData} setFormData={setFormData} />}
+        {activeTab === 'language' && <LanguageSettings formData={formData} setFormData={setFormData} />}
         {activeTab === 'fiscal' && <FiscalSettings formData={formData} setFormData={setFormData} />}
         {activeTab === 'ticket' && <TicketSettings formData={formData} setFormData={setFormData} />}
         {activeTab === 'loyalty' && <LoyaltySettings formData={formData} setFormData={setFormData} />}
         {activeTab === 'printers' && <PrinterSettings />}
+        {activeTab === 'pos_hardware' && <POSHardwareSettings />}
+        {activeTab === 'payment_gateway' && <PaymentGatewaySettings />}
         {activeTab === 'audit' && <AuditPanel auditLog={auditLog} />}
       </div>
     </div>

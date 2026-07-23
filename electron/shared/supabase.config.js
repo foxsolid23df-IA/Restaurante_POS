@@ -1,0 +1,4 @@
+export const SUPABASE_URL = 'https://ymbgtiuixbqyhgigttgs.supabase.co'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltYmd0aXVpeGJxeWhnaWd0dGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3OTIwOTMsImV4cCI6MjA2NzM2ODA5M30.n4MU3GnFjFnXfNcXQq2wQx2qQ2qQ2qQ2qQ2qQ2qQ2qQ'
+
+export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''

@@ -1,12 +1,18 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { usePrinters } from '../usePrinters'
-import { supabase } from '@/lib/supabase'
 import { useBranchStore } from '@/store/branchStore'
 
-// Mock branch store
 vi.mock('@/store/branchStore', () => ({
   useBranchStore: vi.fn()
+}))
+
+vi.mock('@/features/settings/api/settingsApi', () => ({
+  settingsApi: {
+    getPrinters: vi.fn(),
+    savePrinter: vi.fn(),
+    deactivatePrinter: vi.fn(),
+  }
 }))
 
 describe('usePrinters', () => {
@@ -29,14 +35,8 @@ describe('usePrinters', () => {
 
   it('should fetch printers for current branch', async () => {
     const mockPrinters = [{ id: 1, name: 'Printer 1' }]
-    
-    // Chain mocking for: supabase.from('printers').select('*').eq(..).order(..)
-    const orderMock = vi.fn().mockResolvedValue({ data: mockPrinters, error: null })
-    const eqMock = vi.fn().mockReturnValue({ order: orderMock })
-    const selectMock = vi.fn().mockReturnValue({ eq: eqMock })
-    const fromMock = vi.fn().mockReturnValue({ select: selectMock })
-    
-    supabase.from = fromMock
+    const { settingsApi } = await import('@/features/settings/api/settingsApi')
+    settingsApi.getPrinters.mockResolvedValue(mockPrinters)
 
     const { result } = renderHook(() => usePrinters())
 
@@ -45,7 +45,6 @@ describe('usePrinters', () => {
       expect(printers).toEqual(mockPrinters)
     })
 
-    expect(fromMock).toHaveBeenCalledWith('printers')
-    expect(eqMock).toHaveBeenCalledWith('branch_id', 'branch-123')
+    expect(settingsApi.getPrinters).toHaveBeenCalledWith('branch-123')
   })
 })

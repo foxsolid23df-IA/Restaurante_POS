@@ -1,12 +1,34 @@
-import { Phone, Mail, Award, Edit3, Trash2, Heart, Star, ShieldCheck, History } from 'lucide-react'
+import { Phone, Mail, Award, Edit3, Trash2, Heart, Star, ShieldCheck, History, Users } from 'lucide-react'
 
-export default function ClientDirectory({ customers, onEdit, onDelete, onViewHistory, onAdjustPoints, loading }) {
+export default function ClientDirectory({ customers, onEdit, onDelete, onViewHistory, onAdjustPoints, loading, onAddCustomer }) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
         {[...Array(6)].map((_, i) => (
           <div key={i} className="h-64 bg-slate-100 rounded-[3rem]" />
         ))}
+      </div>
+    )
+  }
+
+  if (customers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-8">
+        <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+          <Users size={40} className="text-slate-300" />
+        </div>
+        <h3 className="text-xl font-black text-slate-900 mb-2">No hay clientes registrados</h3>
+        <p className="text-slate-500 text-center max-w-md mb-6">
+          Comienza a construir tu base de datos de clientes para ofrecer un servicio personalizado y acumular puntos de lealtad.
+        </p>
+        {onAddCustomer && (
+          <button
+            onClick={onAddCustomer}
+            className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg"
+          >
+            Registrar Primer Cliente
+          </button>
+        )}
       </div>
     )
   }
@@ -27,9 +49,22 @@ export default function ClientDirectory({ customers, onEdit, onDelete, onViewHis
   )
 }
 
+function getFrequencyLabel(visitCount, lastVisitAt) {
+  const visits = visitCount || 0
+  if (visits === 0) return 'Nuevo'
+  if (visits >= 10) return 'Alta'
+  if (lastVisitAt) {
+    const daysSinceLastVisit = Math.floor((Date.now() - new Date(lastVisitAt).getTime()) / (1000 * 60 * 60 * 24))
+    if (daysSinceLastVisit <= 30 && visits >= 3) return 'Alta'
+  }
+  if (visits >= 3) return 'Media'
+  return 'Baja'
+}
+
 function ClientCard({ customer, onEdit, onDelete, onViewHistory, onAdjustPoints }) {
   const points = customer.loyalty_points || 0
   const isVIP = points > 500
+  const frequency = getFrequencyLabel(customer.visit_count, customer.last_visit_at)
 
   return (
     <div className="bg-white rounded-[3.5rem] p-10 border border-slate-100 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 relative group overflow-hidden">
@@ -45,7 +80,7 @@ function ClientCard({ customer, onEdit, onDelete, onViewHistory, onAdjustPoints 
         <div className={`w-20 h-20 rounded-[2.2rem] flex items-center justify-center font-black text-3xl shadow-inner transform group-hover:rotate-6 transition-all ${
           isVIP ? 'bg-amber-50 text-amber-500 border border-amber-100' : 'bg-slate-50 text-slate-300 border border-slate-100'
         }`}>
-          {customer.name[0].toUpperCase()}
+          {customer.name?.[0]?.toUpperCase() || '?'}
         </div>
         <div>
           <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-2">{customer.name}</h3>
@@ -67,7 +102,7 @@ function ClientCard({ customer, onEdit, onDelete, onViewHistory, onAdjustPoints 
         </div>
         <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100/50">
            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Frecuencia</p>
-           <p className="font-black text-slate-900 text-lg uppercase tracking-tight">Alta</p>
+           <p className="font-black text-slate-900 text-lg uppercase tracking-tight">{frequency}</p>
         </div>
       </div>
 
@@ -113,6 +148,7 @@ function ClientCard({ customer, onEdit, onDelete, onViewHistory, onAdjustPoints 
           </button>
           <button 
             onClick={onDelete}
+            aria-label="Eliminar cliente"
             className="flex-1 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2 border border-rose-100/50 active:scale-95"
           >
             <Trash2 size={16} />

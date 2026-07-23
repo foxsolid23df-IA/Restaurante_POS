@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useBranchStore } from '@/store/branchStore'
-import { Loader2, Plus, Printer, Save, Trash2, Wifi, X } from 'lucide-react'
+import { isElectron } from '@/lib/electronBridge'
+import PrinterConfigWizard from '@/components/Printer/PrinterConfigWizard'
+import { Loader2, Plus, Printer, Save, Trash2, Wifi, X, Monitor } from 'lucide-react'
 import { toast } from 'sonner'
 
 const inputClass = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100'
@@ -20,6 +22,7 @@ export default function PrinterSettings() {
   const [editingPrinter, setEditingPrinter] = useState(null)
   const [form, setForm] = useState(emptyPrinter)
   const [actionLoading, setActionLoading] = useState(false)
+  const [showLocalConfig, setShowLocalConfig] = useState(false)
 
   const loadPrinters = async () => {
     if (!currentBranch?.id) {
@@ -91,10 +94,22 @@ export default function PrinterSettings() {
             </p>
           </div>
         </div>
-        <button type="button" onClick={startCreate} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-          <Plus size={16} />
-          Nueva impresora
-        </button>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={startCreate} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <Plus size={16} />
+            Nueva impresora
+          </button>
+          {isElectron && (
+            <button
+              type="button"
+              onClick={() => setShowLocalConfig(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Monitor size={16} />
+              Configurar este terminal
+            </button>
+          )}
+        </div>
       </div>
 
       {!currentBranch?.id ? (
@@ -175,6 +190,9 @@ export default function PrinterSettings() {
             </button>
           </form>
         </div>
+      )}
+      {showLocalConfig && (
+        <PrinterConfigWizard onClose={() => setShowLocalConfig(false)} />
       )}
     </section>
   )

@@ -156,7 +156,7 @@ export function useComandaPrinter() {
         .select(`
           *,
           tables(name),
-          user:profiles(full_name),
+          user:profiles!user_id(full_name),
           order_items(
             quantity,
             price_at_order,

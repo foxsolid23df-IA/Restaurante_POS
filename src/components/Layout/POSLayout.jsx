@@ -1,13 +1,16 @@
 import { Outlet } from 'react-router-dom'
+import { useState } from 'react'
 import POSSidebar from './POSSidebar'
 import NotificationCenter from '../NotificationCenter'
+import PrinterConfigWizard from '../Printer/PrinterConfigWizard'
 import { useAuthStore } from '@/store/authStore'
 import { useBranchStore } from '@/store/branchStore'
-import { MapPin, ChevronDown, Check, Terminal, LogOut } from 'lucide-react'
+import { MapPin, ChevronDown, Check, Terminal, LogOut, Printer } from 'lucide-react'
 
 export default function POSLayout() {
   const { profile, signOut } = useAuthStore()
   const { currentBranch, branches, setCurrentBranch } = useBranchStore()
+  const [showPrinterConfig, setShowPrinterConfig] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -33,6 +36,14 @@ export default function POSLayout() {
           </div>
           
           <div className="flex items-center gap-6">
+            <button
+              onClick={() => setShowPrinterConfig(!showPrinterConfig)}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all font-semibold text-sm"
+              title="Configurar impresora"
+            >
+              <Printer size={16} />
+              <span className="hidden lg:inline">Impresora</span>
+            </button>
             <NotificationCenter />
             <div className="h-8 w-[1px] bg-slate-100" />
             
@@ -64,6 +75,9 @@ export default function POSLayout() {
           <Outlet />
         </main>
       </div>
+      {showPrinterConfig && (
+        <PrinterConfigWizard onClose={() => setShowPrinterConfig(false)} />
+      )}
     </div>
   )
 }

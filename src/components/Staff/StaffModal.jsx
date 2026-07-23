@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, Copy, KeyRound, Loader2, Mail, Save, Shield, X } from 'lucide-react'
+import { AlertTriangle, Check, Copy, Globe, KeyRound, Loader2, Mail, Save, Shield, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   DEFAULT_PERMISSIONS,
@@ -28,6 +28,7 @@ export default function StaffModal({ user, branches = [], onClose, onSave }) {
     pin_code: '',
     branch_id: '',
     is_active: true,
+    preferred_language: 'es',
     permissions: { ...DEFAULT_PERMISSIONS }
   })
   const [loading, setLoading] = useState(false)
@@ -45,6 +46,7 @@ export default function StaffModal({ user, branches = [], onClose, onSave }) {
         pin_code: '',
         branch_id: user.branch_id || '',
         is_active: user.is_active ?? true,
+        preferred_language: user.preferred_language || 'es',
         permissions: staffApi.normalizePermissions(user.role, user.permissions)
       })
     } else {
@@ -57,7 +59,8 @@ export default function StaffModal({ user, branches = [], onClose, onSave }) {
         pin_code: generatePin(),
         branch_id: branches[0]?.id || '',
         is_active: true,
-        permissions: { ...(ROLE_PERMISSIONS[role] || DEFAULT_PERMISSIONS) }
+        permissions: { ...(ROLE_PERMISSIONS[role] || DEFAULT_PERMISSIONS) },
+        preferred_language: 'es',
       })
     }
   }, [user, branches])
@@ -259,6 +262,14 @@ export default function StaffModal({ user, branches = [], onClose, onSave }) {
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>{branch.name}</option>
                   ))}
+                </select>
+              </Field>
+
+              <Field label="Idioma preferido" icon={<Globe size={13} />}>
+                <select value={formData.preferred_language} onChange={(event) => setFormData({ ...formData, preferred_language: event.target.value })} className={inputClass}>
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                  <option value="pt">Português</option>
                 </select>
               </Field>
             </section>

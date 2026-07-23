@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, History, ShoppingBag, Calendar, Loader2, ArrowRight } from 'lucide-react'
 import { crmApi } from '@/features/crm/api/crmApi'
+import { toast } from 'sonner'
 
 export default function CustomerHistoryModal({ customer, onClose }) {
   const [orders, setOrders] = useState([])
@@ -22,7 +23,7 @@ export default function CustomerHistoryModal({ customer, onClose }) {
       setProfile(data || null)
       setOrders(data?.orders || [])
     } catch (error) {
-      console.error("Error fetching history:", error)
+      toast.error('No se pudo cargar el historial del cliente')
     } finally {
       setLoading(false)
     }

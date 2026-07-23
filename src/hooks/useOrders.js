@@ -28,7 +28,7 @@ export function useOrders() {
         .select(`
           *,
           tables(id, name, areas(name)),
-          user:profiles(id, full_name, role),
+          user:profiles!user_id(id, full_name, role),
           order_items(
             *,
             products(id, name, price, image_url)
@@ -245,7 +245,7 @@ export function useOrders() {
         .select(`
           *,
           tables(id, name, areas(name)),
-          user:profiles(id, full_name, role),
+          user:profiles!user_id(id, full_name, role),
           order_items(
             *,
             products(id, name, price, image_url)

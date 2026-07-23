@@ -1,0 +1,53 @@
+appId: com.restaurante.pos
+productName: Restaurante POS
+copyright: Copyright © 2026 Restaurante POS
+
+# Build directories
+directories:
+  buildResources: build
+  output: release
+
+# Files to include - only out directory and package.json
+files:
+  - out/**/*
+  - package.json
+
+# Extra resources
+extraResources:
+  - from: build/
+    to: resources/
+    filter:
+      - "**/*"
+
+# Windows configuration
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "RestaurantePOS-${version}-win-${arch}.exe"
+
+# NSIS installer configuration
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Restaurante POS
+  uninstallDisplayName: Restaurante POS
+
+# Auto-update configuration
+publish:
+  provider: github
+  owner: foxsolid23df-IA
+  repo: Restaurante_POS
+  releaseType: release
+
+# After pack hook
+afterPack: ./scripts/after-pack.cjs
+
+# compression
+compression: maximum
+
+# Don't rebuild native modules during pack
+npmRebuild: false

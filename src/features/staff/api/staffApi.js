@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/authStore'
 
 export const DEFAULT_PERMISSIONS = {
   access_admin: false,
@@ -77,7 +78,17 @@ function normalizeStaff(row) {
 }
 
 async function invokeAdminService(body) {
-  const { data, error } = await supabase.functions.invoke('admin-service', { body })
+  const headers = {}
+  const profile = useAuthStore.getState().profile
+
+  if (profile?.id) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      headers['X-Profile-Id'] = profile.id
+    }
+  }
+
+  const { data, error } = await supabase.functions.invoke('admin-service', { body, headers })
   if (error) throw new Error(error.message || 'No se pudo ejecutar admin-service')
   if (data?.error) throw new Error(data.error)
   return data

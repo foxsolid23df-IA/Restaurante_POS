@@ -1,0 +1,21 @@
+{
+  "name": "Restaurante POS",
+  "short_name": "RestPOS",
+  "description": "Sistema POS para restaurantes - Menu digital, pedidos y gestion",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["business", "food", "restaurant"],
+  "lang": "es",
+  "scope": "/"
+}

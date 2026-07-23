@@ -18,7 +18,7 @@ export default function KitchenDisplay() {
             orders!inner(
               id,
               tables(name, areas(name)),
-              profiles(full_name),
+               profiles!user_id(full_name),
               created_at
             ),
             products!inner(

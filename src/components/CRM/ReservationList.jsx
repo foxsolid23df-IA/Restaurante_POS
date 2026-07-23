@@ -1,4 +1,4 @@
-import { Calendar, Clock, Users, CheckCircle2, XCircle, MoreVertical, MapPin, Phone } from 'lucide-react'
+import { Calendar, Clock, Users, CheckCircle2, XCircle } from 'lucide-react'
 
 export default function ReservationList({ reservations, onUpdateStatus, loading }) {
   if (loading) {
@@ -77,10 +77,7 @@ export default function ReservationList({ reservations, onUpdateStatus, loading 
                         >
                           <XCircle size={24} />
                         </button>
-                      )}
-                      <button className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all shadow-sm">
-                         <MoreVertical size={20} />
-                      </button>
+                       )}
                    </div>
                 </td>
               </tr>

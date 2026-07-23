@@ -1,12 +1,24 @@
 import React from 'react'
-import { Award, Star, TrendingUp, Users, Gift, Ticket } from 'lucide-react'
+import { Award, Star, TrendingUp, Users, Gift, Ticket, GiftIcon } from 'lucide-react'
 import { useCustomers } from '@/hooks/useCustomers'
+import { useLoyaltyRewards } from '@/hooks/useLoyaltyRewards'
+
+const iconMap = {
+  Gift: <Gift size={20} />,
+  Ticket: <Ticket size={20} />,
+  Star: <Star size={20} />,
+  Award: <Award size={20} />,
+  TrendingUp: <TrendingUp size={20} />,
+  GiftIcon: <GiftIcon size={20} />
+}
 
 export default function LoyaltyProgram() {
   const { customers } = useCustomers()
+  const { rewards, loading: rewardsLoading } = useLoyaltyRewards()
   
   const totalPoints = customers.reduce((sum, c) => sum + (c.loyalty_points || 0), 0)
   const activeLoyaltyUsers = customers.filter(c => (c.loyalty_points || 0) > 0).length
+  const redemptionRate = customers.length > 0 ? Math.round((activeLoyaltyUsers / customers.length) * 100) : 0
 
   return (
     <div className="p-8">
@@ -37,7 +49,7 @@ export default function LoyaltyProgram() {
             <TrendingUp size={24} />
           </div>
           <p className="text-sm font-bold text-gray-400 uppercase">Tasa de Canje</p>
-          <p className="text-3xl font-black text-gray-900 mt-1">12%</p>
+          <p className="text-3xl font-black text-gray-900 mt-1">{redemptionRate}%</p>
         </div>
       </div>
 
@@ -61,12 +73,30 @@ export default function LoyaltyProgram() {
             <Gift size={24} className="text-purple-600" />
             Catálogo de Premios
           </h3>
-          <div className="space-y-4">
-             <RewardItem icon={<Ticket size={20} />} name="Refresco Gratis" cost="100 pts" />
-             <RewardItem icon={<TrendingUp size={20} />} name="10% de Descuento" cost="250 pts" />
-             <RewardItem icon={<Star size={20} />} name="Entrada de Cortesía" cost="500 pts" />
-             <RewardItem icon={<Award size={20} />} name="Plato Fuerte Gratis" cost="1000 pts" />
-          </div>
+          {rewardsLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : rewards.length === 0 ? (
+            <div className="text-center py-8">
+              <Gift size={48} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No hay premios configurados</p>
+              <p className="text-sm text-gray-400 mt-1">Crea recompensas desde el panel de administración CRM</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {rewards.map((reward) => (
+                <RewardItem 
+                  key={reward.id} 
+                  icon={iconMap[reward.icon_name] || <Gift size={20} />} 
+                  name={reward.title} 
+                  cost={`${reward.points_cost} pts`} 
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

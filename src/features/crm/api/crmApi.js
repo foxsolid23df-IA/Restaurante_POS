@@ -62,15 +62,37 @@ export const crmApi = {
     assertNoSchemaError(customerError)
 
     const activeCustomers = (customers || []).filter((customer) => customer.is_active !== false)
+    const totalCustomers = activeCustomers.length
+    const totalSpent = activeCustomers.reduce((sum, customer) => sum + Number(customer.total_spent || 0), 0)
+    const totalOrders = activeCustomers.reduce((sum, customer) => sum + Number(customer.visit_count || 0), 0)
+
+    const { data: rewards } = await supabase
+      .from('loyalty_rewards')
+      .select('id')
+      .eq('is_active', true)
+
+    const { data: suspiciousAlerts } = await supabase
+      .from('loyalty_transactions')
+      .select('id')
+      .eq('is_suspicious', true)
+
+    const { data: upcomingReservations } = await scopedByBranch(
+      supabase.from('reservations')
+        .select('id')
+        .gte('reservation_date', new Date().toISOString())
+        .in('status', ['pending', 'confirmed']),
+      branchId
+    )
+
     return {
-      activeCustomers: activeCustomers.length,
+      activeCustomers: totalCustomers,
       vipCustomers: activeCustomers.filter((customer) => Number(customer.loyalty_points || 0) >= 500).length,
       pointsInCirculation: activeCustomers.reduce((sum, customer) => sum + Number(customer.loyalty_points || 0), 0),
-      totalSpent: activeCustomers.reduce((sum, customer) => sum + Number(customer.total_spent || 0), 0),
-      averageTicket: 0,
-      reservationsUpcoming: 0,
-      activeRewards: 0,
-      loyaltyAlerts: 0
+      totalSpent,
+      averageTicket: totalOrders > 0 ? totalSpent / totalOrders : 0,
+      reservationsUpcoming: upcomingReservations?.length || 0,
+      activeRewards: rewards?.length || 0,
+      loyaltyAlerts: suspiciousAlerts?.length || 0
     }
   },
 
@@ -401,6 +423,16 @@ export const crmApi = {
 
     assertNoSchemaError(error)
     return data
+  },
+
+  async getTables() {
+    const { data, error } = await supabase
+      .from('tables')
+      .select('id, name')
+      .order('name')
+
+    assertNoSchemaError(error)
+    return data || []
   }
 }
 

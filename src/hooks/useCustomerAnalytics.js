@@ -1,11 +1,6 @@
 import { useMemo } from 'react'
-import { useCustomers } from './useCustomers'
-import { useOrders } from './useOrders'
 
-export function useCustomerAnalytics() {
-  const { customers } = useCustomers()
-  const { orders } = useOrders()
-
+export function useCustomerAnalytics(customers = [], orders = []) {
   return useMemo(() => {
     const customerById = new Map(customers.map((customer) => [customer.id, customer]))
 

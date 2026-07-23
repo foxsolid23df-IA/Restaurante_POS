@@ -12,6 +12,11 @@ type AdminAction =
   | 'deactivate_user'
   | 'reactivate_user'
   | 'delete_user'
+  | 'list_subscriptions'
+  | 'create_license_user'
+  | 'update_subscription'
+  | 'suspend_subscription'
+  | 'reactivate_subscription'
 
 type UserData = {
   email?: string
@@ -104,23 +109,32 @@ Deno.serve(async (req) => {
     }
 
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return jsonResponse({ error: 'Sesion requerida' }, 401)
+    const profileIdHeader = req.headers.get('X-Profile-Id')
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false }
-    })
+    let callerUserId
+
+    if (authHeader) {
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false }
+      })
+      const { data: callerData, error: callerError } = await userClient.auth.getUser()
+      if (callerError || !callerData.user) return jsonResponse({ error: 'Sesion invalida' }, 401)
+      callerUserId = callerData.user.id
+    } else if (profileIdHeader) {
+      callerUserId = profileIdHeader
+    } else {
+      return jsonResponse({ error: 'Sesion requerida' }, 401)
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false }
     })
 
-    const { data: callerData, error: callerError } = await userClient.auth.getUser()
-    if (callerError || !callerData.user) return jsonResponse({ error: 'Sesion invalida' }, 401)
-
     const { data: callerProfile, error: profileError } = await adminClient
       .from('profiles')
       .select('id, role, permissions, is_active')
-      .eq('id', callerData.user.id)
+      .eq('id', callerUserId)
       .single()
 
     if (profileError || !callerProfile?.is_active) {
@@ -257,6 +271,82 @@ Deno.serve(async (req) => {
       if (authDeleteError) throw authDeleteError
 
       return jsonResponse({ deleted: true })
+    }
+
+    if (action === 'list_subscriptions') {
+      const { data: subscriptions, error } = await adminClient
+        .from('subscriptions')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return jsonResponse({ subscriptions: subscriptions || [] })
+    }
+
+    if (action === 'create_license_user') {
+      if (!userData.email || !userData.password || !userData.full_name) {
+        return jsonResponse({ error: 'Nombre, correo y password son requeridos' }, 400)
+      }
+
+      const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: true,
+        user_metadata: { full_name: userData.full_name }
+      })
+      if (createError || !created.user) throw createError || new Error('No se pudo crear usuario')
+
+      const { error: subscriptionError } = await adminClient.from('subscriptions').insert({
+        user_id: created.user.id,
+        email: userData.email,
+        full_name: userData.full_name,
+        status: 'active',
+        activated_at: null,
+        last_validated_at: null
+      })
+
+      if (subscriptionError) {
+        await adminClient.auth.admin.deleteUser(created.user.id)
+        throw subscriptionError
+      }
+
+      return jsonResponse({
+        created: true,
+        user: { id: created.user.id, email: userData.email, full_name: userData.full_name }
+      })
+    }
+
+    const subscriptionId = payload.subscriptionId as string | undefined
+    const updates = (payload.updates || {}) as Record<string, unknown>
+
+    if (action === 'update_subscription') {
+      if (!subscriptionId) return jsonResponse({ error: 'subscriptionId requerido' }, 400)
+      const { error } = await adminClient
+        .from('subscriptions')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', subscriptionId)
+      if (error) throw error
+      return jsonResponse({ updated: true })
+    }
+
+    if (action === 'suspend_subscription') {
+      if (!subscriptionId) return jsonResponse({ error: 'subscriptionId requerido' }, 400)
+      const { error } = await adminClient
+        .from('subscriptions')
+        .update({ status: 'suspended', updated_at: new Date().toISOString() })
+        .eq('id', subscriptionId)
+      if (error) throw error
+      return jsonResponse({ suspended: true })
+    }
+
+    if (action === 'reactivate_subscription') {
+      if (!subscriptionId) return jsonResponse({ error: 'subscriptionId requerido' }, 400)
+      const { error } = await adminClient
+        .from('subscriptions')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', subscriptionId)
+      if (error) throw error
+      return jsonResponse({ reactivated: true })
     }
 
     return jsonResponse({ error: 'Accion no soportada' }, 400)

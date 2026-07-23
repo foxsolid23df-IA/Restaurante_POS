@@ -25,6 +25,7 @@ export const normalizeBranch = (branch = {}) => ({
   address: branch.address || '',
   phone: branch.phone || '',
   email: branch.email || '',
+  currency: branch.currency || branch.default_currency || 'MXN',
   timezone: branch.timezone || 'America/Mexico_City',
   openingHours: branch.openingHours || branch.opening_hours || {},
   isActive: toBool(branch.isActive ?? branch.is_active, true),
