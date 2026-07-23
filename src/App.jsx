@@ -83,6 +83,7 @@ const adminRoutePermissions = [
   { prefix: '/admin/inventory', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager'] },
   { prefix: '/admin/purchases', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager', 'cashier'] },
   { prefix: '/admin/staff', permission: 'manage_staff', fallbackRoles: ['admin'] },
+  { prefix: '/admin/licenses', permission: 'manage_staff', fallbackRoles: ['admin'] },
   { prefix: '/admin/settings', permission: 'access_admin', fallbackRoles: ['admin'] },
   { prefix: '/admin/branches', permission: null, fallbackRoles: ['admin'] },
   { prefix: '/admin', permission: 'access_admin', fallbackRoles: ['admin', 'manager'] }

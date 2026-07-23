@@ -11,11 +11,13 @@ export const hasPermission = (profile, permission, fallbackRoles = []) => {
   if (!profile) return false
   if (!permission) return true
 
+  if (fallbackRoles.includes(profile.role)) return true
+
   if (profile.permissions && Object.prototype.hasOwnProperty.call(profile.permissions, permission)) {
     return Boolean(profile.permissions[permission])
   }
 
-  return fallbackRoles.includes(profile.role)
+  return false
 }
 
 export function useRolePermissions() {
