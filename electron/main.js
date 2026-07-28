@@ -229,11 +229,19 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('db:seed', async (event, seedData) => {
     try {
+      // Disable foreign keys during seed to avoid ordering issues with partial data
+      db.exec('PRAGMA foreign_keys = OFF')
+
       const transaction = db.transaction((data) => {
         for (const branch of data.branches || []) {
           const b = normalizeRow(branch)
           db.prepare('INSERT OR REPLACE INTO branches (id, name, code, address, phone, email, timezone, is_active, currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(b.id, b.name, b.code, b.address, b.phone, b.email, b.timezone, b.is_active, b.currency, b.created_at, b.updated_at)
+        }
+        for (const menu of data.menus || []) {
+          const m = normalizeRow(menu)
+          db.prepare('INSERT OR REPLACE INTO menus (id, branch_id, name, start_time, end_time, active_days, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            .run(m.id, m.branch_id, m.name, m.start_time, m.end_time, m.active_days, m.is_active, m.created_at, m.updated_at)
         }
         for (const profile of data.profiles || []) {
           const p = normalizeRow(profile, ['permissions'])
@@ -267,9 +275,16 @@ function setupDatabaseHandlers() {
         }
       })
       transaction(seedData)
+
+      // Re-enable foreign keys after seed
+      db.exec('PRAGMA foreign_keys = ON')
+
+      console.log('DB Seed completed successfully')
       return { success: true }
     } catch (error) {
       console.error('DB Seed Error:', error)
+      // Ensure foreign keys are re-enabled even on error
+      try { db.exec('PRAGMA foreign_keys = ON') } catch (e) {}
       throw error
     }
   })

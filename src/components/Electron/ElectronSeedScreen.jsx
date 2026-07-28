@@ -36,6 +36,7 @@ export default function ElectronSeedScreen({ children }) {
 
       const seedData = {
         branches: [],
+        menus: [],
         profiles: [],
         categories: [],
         products: [],
@@ -47,6 +48,10 @@ export default function ElectronSeedScreen({ children }) {
       setProgress('Descargando datos de sucursales...')
       const { data: branches } = await supabase.from('branches').select('*').eq('is_active', true)
       seedData.branches = branches || []
+
+      setProgress('Descargando menus...')
+      const { data: menus } = await supabase.from('menus').select('*').eq('is_active', true)
+      seedData.menus = menus || []
 
       setProgress('Descargando perfiles de usuario...')
       const { data: profiles } = await supabase.from('profiles').select('*').eq('is_active', true)
