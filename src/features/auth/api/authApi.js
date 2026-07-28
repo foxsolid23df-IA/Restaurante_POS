@@ -94,7 +94,29 @@ export const authApi = {
             }
 
             console.error('[signInWithPin] PIN not found locally after sync. Pin:', pin)
-            throw new Error('PIN incorrecto')
+
+            // Último recurso: verificar directamente con Supabase
+            try {
+                console.log('[signInWithPin] Fallback: calling verify_pin on Supabase...')
+                const { data: remoteProfile, error: remoteError } = await supabase.rpc('verify_pin', { p_pin: pin })
+                if (remoteError) {
+                    console.error('[signInWithPin] verify_pin error:', remoteError.message)
+                    throw new Error(`Supabase: ${remoteError.message}`)
+                }
+                const result = Array.isArray(remoteProfile) ? remoteProfile[0] : remoteProfile
+                if (!result) throw new Error('PIN incorrecto en Supabase')
+
+                // Guardar localmente
+                await localDb.run(
+                    `INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, pin_code_hash, is_active, email, permissions, branch_id, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [result.id, result.full_name, result.role, pin, pinHash, 1, null, JSON.stringify(result.permissions || {}), result.branch_id || null, new Date().toISOString(), new Date().toISOString()]
+                )
+                return result
+            } catch (fallbackErr) {
+                console.error('[signInWithPin] Fallback failed:', fallbackErr.message)
+                throw new Error(`PIN incorrecto (${fallbackErr.message})`)
+            }
         }
 
         const { data: profile, error } = await supabase
