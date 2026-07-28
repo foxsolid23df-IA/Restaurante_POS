@@ -32,14 +32,54 @@ export const authApi = {
     },
 
     signInWithPin: async (pin) => {
+        const pinHash = await hashPin(pin)
+
         if (isElectron) {
-            const pinHash = await hashPin(pin)
+            // Intentar sincronizar perfiles activos desde Supabase antes de validar
+            try {
+                console.log('[signInWithPin] Syncing profiles from Supabase...')
+                const { data: profiles, error: syncError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('is_active', true)
+
+                if (!syncError && profiles && profiles.length > 0) {
+                    for (const profile of profiles) {
+                        await localDb.run(
+                            `INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, pin_code_hash, is_active, email, permissions, branch_id, created_at, updated_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [
+                                profile.id,
+                                profile.full_name,
+                                profile.role,
+                                profile.pin_code || null,
+                                profile.pin_code_hash || null,
+                                profile.is_active ? 1 : 0,
+                                profile.email || null,
+                                JSON.stringify(profile.permissions || {}),
+                                profile.branch_id || null,
+                                profile.created_at || new Date().toISOString(),
+                                profile.updated_at || new Date().toISOString()
+                            ]
+                        )
+                    }
+                    console.log(`[signInWithPin] Synced ${profiles.length} profiles`)
+                } else if (syncError) {
+                    console.warn('[signInWithPin] Could not sync profiles:', syncError.message)
+                }
+            } catch (syncErr) {
+                console.warn('[signInWithPin] Sync error (offline?):', syncErr.message)
+            }
+
+            // Verificar PIN localmente
             const rows = await localDb.query(
                 `SELECT id, full_name, role, is_active, branch_id, permissions, pin_code, pin_code_hash
                  FROM profiles
                  WHERE is_active = 1 AND (pin_code = ? OR pin_code_hash = ?)`,
                 [pin, pinHash]
             )
+
+            console.log('[signInWithPin] Local rows found:', rows?.length)
 
             if (rows && rows.length > 0) {
                 const profile = rows[0]
@@ -53,25 +93,8 @@ export const authApi = {
                 }
             }
 
-            // Fallback a Supabase si el PIN no existe localmente (nuevo empleado)
-            try {
-                const { data: profile, error } = await supabase.rpc('verify_pin', { p_pin: pin })
-                if (error || !profile) throw new Error('PIN incorrecto')
-
-                const result = Array.isArray(profile) ? profile[0] : profile
-                if (!result) throw new Error('PIN incorrecto')
-
-                // Guardar perfil localmente para futuros logins offline
-                await localDb.run(
-                    `INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, pin_code_hash, is_active, email, permissions, branch_id, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [result.id, result.full_name, result.role, pin, pinHash, 1, null, JSON.stringify(result.permissions || {}), result.branch_id || null, new Date().toISOString(), new Date().toISOString()]
-                )
-
-                return result
-            } catch (e) {
-                throw new Error('PIN incorrecto o sin conexion')
-            }
+            console.error('[signInWithPin] PIN not found locally after sync. Pin:', pin)
+            throw new Error('PIN incorrecto')
         }
 
         const { data: profile, error } = await supabase
