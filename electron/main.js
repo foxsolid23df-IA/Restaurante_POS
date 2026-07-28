@@ -180,7 +180,7 @@ function setupDatabaseHandlers() {
           db.prepare('INSERT OR REPLACE INTO branches (id, name, code, address, phone, email, timezone, is_active, currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(branch.id, branch.name, branch.code, branch.address, branch.phone, branch.email, branch.timezone, branch.is_active, branch.currency, branch.created_at, branch.updated_at)
         }
         for (const profile of data.profiles || []) {
-          db.prepare('INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, is_active, email, branch_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(profile.id, profile.full_name, profile.role, profile.pin_code, profile.is_active, profile.email, profile.branch_id, profile.created_at, profile.updated_at)
+          db.prepare('INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, pin_code_hash, is_active, email, permissions, branch_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(profile.id, profile.full_name, profile.role, profile.pin_code || null, profile.pin_code_hash || null, profile.is_active ? 1 : 0, profile.email || null, JSON.stringify(profile.permissions || {}), profile.branch_id || null, profile.created_at, profile.updated_at)
         }
         for (const category of data.categories || []) {
           db.prepare('INSERT OR REPLACE INTO categories (id, name, menu_id, printer_id, created_at) VALUES (?, ?, ?, ?, ?)').run(category.id, category.name, category.menu_id, category.printer_id, category.created_at)

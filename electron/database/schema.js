@@ -25,6 +25,7 @@ export function initializeSchema(db) {
       full_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'waiter',
       pin_code TEXT,
+      pin_code_hash TEXT,
       is_active INTEGER DEFAULT 1,
       email TEXT,
       permissions TEXT DEFAULT '{}',
