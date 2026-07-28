@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
     console.log('[admin-service] Headers:', { hasAuth: !!authHeader, hasProfileId: !!profileIdHeader })
 
     let callerUserId: string | null = null
+    let callerAuthUserId: string | null = null
     let callerEmail: string | null = null
 
     if (authHeader) {
@@ -158,9 +159,11 @@ Deno.serve(async (req) => {
       const { data: callerData, error: callerError } = await userClient.auth.getUser()
       if (callerError || !callerData.user) return jsonResponse({ error: 'Sesion invalida' }, 401)
       callerUserId = callerData.user.id
+      callerAuthUserId = callerData.user.id
       callerEmail = callerData.user.email || null
     } else if (profileIdHeader) {
       callerUserId = profileIdHeader
+      callerAuthUserId = profileIdHeader
     } else {
       return jsonResponse({ error: 'Sesion requerida' }, 401)
     }
@@ -350,7 +353,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'userId requerido' }, 400)
     }
 
-    if ((action === 'deactivate_user' || action === 'delete_user') && userId === callerData.user.id) {
+    if ((action === 'deactivate_user' || action === 'delete_user') && userId === callerAuthUserId) {
       console.error('[admin-service] Cannot self-deactivate/delete')
       return jsonResponse({ error: 'No puedes desactivar o eliminar tu propio usuario' }, 400)
     }
