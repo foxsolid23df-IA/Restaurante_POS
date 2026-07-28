@@ -95,6 +95,13 @@ export default function Users() {
   const handleDelete = async (user) => {
     try {
       const data = await staffApi.deleteStaff(user.id)
+      if (data?.deactivated) {
+        toast.success('Empleado desactivado', {
+          description: data.message || 'Tenía historial operativo, por lo que se desactivó en lugar de eliminar.'
+        })
+        loadData()
+        return
+      }
       if (data?.deleted === false || data?.reason === 'has_history') {
         toast.error('No se puede eliminar', {
           description: data.message || 'Tiene historial operativo. Desactivalo para conservar reportes.'

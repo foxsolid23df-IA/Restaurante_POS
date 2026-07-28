@@ -406,11 +406,23 @@ Deno.serve(async (req) => {
       const historyCount = checks.reduce((sum, result) => sum + (result.count || 0), 0)
 
       if (historyCount > 0) {
+        console.log('[admin-service] Employee has history, deactivating instead of deleting. Count:', historyCount)
+        const { error: deactivateError } = await adminClient
+          .from('profiles')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('id', userId)
+
+        if (deactivateError) {
+          console.error('[admin-service] deactivation after history check error:', deactivateError)
+          throw deactivateError
+        }
+
         return jsonResponse({
           deleted: false,
+          deactivated: true,
           reason: 'has_history',
           count: historyCount,
-          message: 'El empleado tiene historial operativo; desactivalo para conservar reportes.'
+          message: 'El empleado tenia historial operativo; se desactivo para conservar reportes.'
         })
       }
 
