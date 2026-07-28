@@ -548,5 +548,26 @@ export function initializeSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_sync_queue_table ON sync_queue(table_name);
   `)
 
+  // Migrations for existing databases
+  // SQLite does not support IF NOT EXISTS in ALTER TABLE, so we catch errors
+  const columnsToAdd = [
+    { table: 'profiles', column: 'pin_code_hash', type: 'TEXT' },
+    { table: 'profiles', column: 'permissions', type: 'TEXT DEFAULT \'{}\'' },
+    { table: 'profiles', column: 'preferred_language', type: 'TEXT DEFAULT \'es\'' }
+  ]
+
+  for (const { table, column, type } of columnsToAdd) {
+    try {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`)
+      console.log(`Migration: added column ${column} to ${table}`)
+    } catch (e) {
+      if (e.message?.includes('duplicate column')) {
+        console.log(`Migration: column ${column} already exists in ${table}`)
+      } else {
+        console.error(`Migration: error adding column ${column} to ${table}:`, e.message)
+      }
+    }
+  }
+
   console.log('Database schema initialized successfully')
 }
