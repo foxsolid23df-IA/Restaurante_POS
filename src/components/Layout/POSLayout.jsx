@@ -1,13 +1,18 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import POSSidebar from './POSSidebar'
 import NotificationCenter from '../NotificationCenter'
 import PrinterConfigWizard from '../Printer/PrinterConfigWizard'
 import { useAuthStore } from '@/store/authStore'
 import { useBranchStore } from '@/store/branchStore'
+import { isElectron } from '@/lib/electronBridge'
 import { MapPin, ChevronDown, Check, Terminal, LogOut, Printer } from 'lucide-react'
 
 export default function POSLayout() {
+  if (!isElectron) {
+    return <Navigate to="/admin" replace />
+  }
+
   const { profile, signOut } = useAuthStore()
   const { currentBranch, branches, setCurrentBranch } = useBranchStore()
   const [showPrinterConfig, setShowPrinterConfig] = useState(false)

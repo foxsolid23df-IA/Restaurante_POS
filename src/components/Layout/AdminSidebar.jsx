@@ -35,7 +35,7 @@ const adminMenuItems = [
 
 export default function AdminSidebar() {
   const location = useLocation()
-  const { profile, signOut } = useAuthStore()
+  const { profile, user, signOut } = useAuthStore()
 
   return (
     <aside className="w-72 bg-primary text-white min-h-screen flex flex-col shadow-2xl z-50 font-sans border-r border-white/5">
@@ -65,7 +65,8 @@ export default function AdminSidebar() {
             ? hasPermission(profile, item.permission, item.roles || [])
             : !item.roles || item.roles.includes(profile?.role)
 
-          const hasEmailAccess = !item.requireEmail || profile?.email?.toLowerCase() === item.requireEmail.toLowerCase()
+          const userEmail = (user?.email || profile?.email || '').trim().toLowerCase()
+          const hasEmailAccess = !item.requireEmail || userEmail === item.requireEmail.toLowerCase()
 
           const canSeeItem = hasRoleAccess && hasEmailAccess
 

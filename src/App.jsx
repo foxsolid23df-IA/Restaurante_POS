@@ -162,8 +162,11 @@ function ProtectedRoute({ allowedRoles, requireSession = false, useAdminPermissi
         return <Navigate to={getDefaultPath()} replace />
       }
 
-      if (routeAccess.requireEmail && user?.email?.toLowerCase() !== routeAccess.requireEmail.toLowerCase()) {
-        return <Navigate to={getDefaultPath()} replace />
+      if (routeAccess.requireEmail) {
+        const userEmail = (user?.email || '').trim().toLowerCase()
+        if (userEmail !== routeAccess.requireEmail.toLowerCase()) {
+          return <Navigate to={getDefaultPath()} replace />
+        }
       }
     }
   }
@@ -239,7 +242,7 @@ function App() {
                   </Route>
                 </Route>
               ) : (
-                <Route path="/pos/*" element={<DesktopOnly />} />
+                <Route path="/pos/*" element={<Navigate to="/admin" replace />} />
               )}
 
               {/* Public customer menu — also restricted to desktop app */}
