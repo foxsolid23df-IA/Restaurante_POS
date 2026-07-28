@@ -170,6 +170,23 @@ export const app = {
       return window.electronAPI.app.openExternal(url)
     }
     window.open(url, '_blank')
+  },
+
+  getLogPath: async () => {
+    if (isElectron) {
+      return window.electronAPI.app.getLogPath()
+    }
+    return null
+  }
+}
+
+// Logger operations
+export const logger = {
+  write: async (level, message) => {
+    if (isElectron) {
+      return window.electronAPI.logger.write(level, message)
+    }
+    console.log(`[${level}]`, message)
   }
 }
 
@@ -197,5 +214,6 @@ export default {
   printer,
   updater,
   app,
-  license
+  license,
+  logger
 }

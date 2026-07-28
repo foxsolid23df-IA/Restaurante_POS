@@ -39,7 +39,13 @@ const appAPI = {
   getInfo: () => ipcRenderer.invoke('app:getInfo'),
   restart: () => ipcRenderer.invoke('app:restart'),
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  getLogPath: () => ipcRenderer.invoke('app:getLogPath'),
   isElectron: true
+}
+
+// Logger API
+const loggerAPI = {
+  write: (level, message) => ipcRenderer.invoke('logger:write', level, message)
 }
 
 // License API
@@ -54,5 +60,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   printer: printerAPI,
   updater: updaterAPI,
   app: appAPI,
-  license: licenseAPI
+  license: licenseAPI,
+  logger: loggerAPI
 })

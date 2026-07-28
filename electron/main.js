@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
 import { join } from 'path'
+import { existsSync, writeFileSync, appendFileSync, mkdirSync } from 'fs'
 import { initDatabase } from './database/connection.js'
 import { setupPrinterHandlers } from './printer/printerService.js'
 import { setupUpdater } from './updater.js'
@@ -11,11 +12,40 @@ let db = null
 
 const isDev = !app.isPackaged
 
+// File logger for packaged builds (DevTools inaccessible)
+const logDir = app.getPath('userData')
+const logPath = join(logDir, 'pos-debug.log')
+
+try {
+  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true })
+  writeFileSync(logPath, `=== Restaurante POS Debug Log - ${new Date().toISOString()} ===\n`)
+} catch (e) {
+  // ignore logger init errors
+}
+
+export function logToFile(level, ...args) {
+  try {
+    const line = `[${new Date().toISOString()}] [${level}] ${args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')}\n`
+    appendFileSync(logPath, line)
+  } catch (e) {
+    // ignore
+  }
+}
+
+const originalLog = console.log
+const originalError = console.error
+const originalWarn = console.warn
+
+console.log = (...args) => { logToFile('INFO', ...args); originalLog(...args) }
+console.error = (...args) => { logToFile('ERROR', ...args); originalError(...args) }
+console.warn = (...args) => { logToFile('WARN', ...args); originalWarn(...args) }
+
 console.log('=== Electron Main Process Started ===')
 console.log('isDev:', isDev)
 console.log('app.isPackaged:', app.isPackaged)
 console.log('__dirname:', __dirname)
 console.log('process.resourcesPath:', process.resourcesPath)
+console.log('Log file:', logPath)
 
 function createActivationWindow() {
   if (activationWindow && !activationWindow.isDestroyed()) {
@@ -108,9 +138,9 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // DevTools shortcut: Ctrl+Shift+I
+  // DevTools shortcuts: Ctrl+Shift+I or F12
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    if ((input.control && input.shift && input.key.toLowerCase() === 'i') || input.key === 'F12') {
       mainWindow.webContents.toggleDevTools()
     }
   })
@@ -227,6 +257,12 @@ function setupDatabaseHandlers() {
 
   ipcMain.handle('app:openExternal', async (event, url) => {
     await shell.openExternal(url)
+  })
+
+  ipcMain.handle('app:getLogPath', async () => logPath)
+
+  ipcMain.handle('logger:write', async (event, level, message) => {
+    logToFile(level, message)
   })
 }
 
