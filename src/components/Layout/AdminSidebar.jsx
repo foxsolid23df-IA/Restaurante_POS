@@ -17,6 +17,7 @@ import {
 import { clsx } from 'clsx'
 import { useAuthStore } from '@/store/authStore'
 import { hasPermission } from '@/hooks/useRolePermissions'
+import { isElectron } from '@/lib/electronBridge'
 
 const adminMenuItems = [
   { icon: LayoutDashboard, label: 'Panel Principal', path: '/admin', exact: true, permission: 'access_admin', roles: ['admin', 'manager'] },
@@ -29,7 +30,7 @@ const adminMenuItems = [
   { icon: MapPin, label: 'Sucursales', path: '/admin/branches', roles: ['admin'] },
   { icon: LayoutGrid, label: 'Arquitectura de Salon', path: '/admin/salon', roles: ['admin', 'manager'] },
   { icon: Settings, label: 'Configuracion', path: '/admin/settings', roles: ['admin'] },
-  { icon: Key, label: 'Licencias', path: '/admin/licenses', roles: ['admin'] }
+  { icon: Key, label: 'Licencias', path: '/admin/licenses', roles: ['admin'], requireEmail: 'admin@restaurante.com' }
 ]
 
 export default function AdminSidebar() {
@@ -60,9 +61,13 @@ export default function AdminSidebar() {
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
         {adminMenuItems.map((item) => {
-          const canSeeItem = item.permission
+          const hasRoleAccess = item.permission
             ? hasPermission(profile, item.permission, item.roles || [])
             : !item.roles || item.roles.includes(profile?.role)
+
+          const hasEmailAccess = !item.requireEmail || profile?.email?.toLowerCase() === item.requireEmail.toLowerCase()
+
+          const canSeeItem = hasRoleAccess && hasEmailAccess
 
           if (!canSeeItem) return null
 
@@ -93,13 +98,15 @@ export default function AdminSidebar() {
       </nav>
 
       <div className="p-4 border-t border-white/5 space-y-2">
-        <Link
-          to="/"
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all font-bold text-sm"
-        >
-          <Receipt size={18} strokeWidth={2.5} />
-          <span className="font-black text-[11px] uppercase tracking-widest">Panel de Servicio</span>
-        </Link>
+        {isElectron && (
+          <Link
+            to="/"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all font-bold text-sm"
+          >
+            <Receipt size={18} strokeWidth={2.5} />
+            <span className="font-black text-[11px] uppercase tracking-widest">Panel de Servicio</span>
+          </Link>
+        )}
         <button
           onClick={signOut}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:text-white hover:bg-red-600 transition-all font-bold text-sm"

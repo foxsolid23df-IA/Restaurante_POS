@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Delete, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
+import { isElectron } from '@/lib/electronBridge'
 import { useAuth } from '../hooks/useAuth'
 
 export default function PINLoginForm() {
@@ -28,7 +29,7 @@ export default function PINLoginForm() {
     try {
       const profile = await loginWithPin(pin)
       toast.success(`Bienvenido, ${profile.full_name || 'Usuario'}`)
-      navigate('/pos/tables')
+      navigate(isElectron ? '/pos/tables' : '/admin')
     } catch (err) {
       toast.error(err.message || 'Error al iniciar sesion')
       setPin('')

@@ -27,6 +27,7 @@ import {
 } from 'recharts'
 import { useDashboardStats } from '@/features/admin/hooks/useDashboardStats'
 import { useBranchStore } from '@/store/branchStore'
+import { isElectron } from '@/lib/electronBridge'
 
 const formatCurrency = (value) => new Intl.NumberFormat('es-MX', {
   style: 'currency',
@@ -54,6 +55,9 @@ function DashboardContent() {
   const navigate = useNavigate()
   const { currentBranch } = useBranchStore()
   const { stats, isRefetching } = useDashboardStats(currentBranch?.id)
+  const visibleAlerts = isElectron
+    ? stats.alerts
+    : stats.alerts.filter((alert) => !alert.path?.startsWith('/pos'))
 
   const summaryCards = [
     {
@@ -113,12 +117,14 @@ function DashboardContent() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => navigate('/pos/cash-closing')}
-            className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm font-black text-slate-700 hover:border-blue-200 hover:text-blue-700 transition-colors"
-          >
-            <DollarSign size={16} /> Corte de caja
-          </button>
+          {isElectron && (
+            <button
+              onClick={() => navigate('/pos/cash-closing')}
+              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm font-black text-slate-700 hover:border-blue-200 hover:text-blue-700 transition-colors"
+            >
+              <DollarSign size={16} /> Corte de caja
+            </button>
+          )}
           <button
             onClick={() => navigate('/admin/purchases')}
             className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-600 text-white text-sm font-black hover:bg-blue-700 transition-colors"
@@ -224,14 +230,14 @@ function DashboardContent() {
             </div>
             <FileWarning size={20} className="text-slate-400" />
           </div>
-          {stats.alerts.length === 0 ? (
+          {visibleAlerts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
               <p className="font-black text-slate-700">Sin alertas críticas por ahora</p>
               <p className="text-sm text-slate-500 mt-1">La operación se ve estable para la sucursal seleccionada.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {stats.alerts.map((alert) => (
+              {visibleAlerts.map((alert) => (
                 <button
                   key={`${alert.title}-${alert.path}`}
                   onClick={() => navigate(alert.path)}

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Banknote, CreditCard, DollarSign, ReceiptText, ShieldCheck } from 'lucide-react'
 import { FinancialCard } from './MetricCards'
+import { isElectron } from '@/lib/electronBridge'
 
 const methodLabels = {
   cash: 'Efectivo',
@@ -52,10 +53,12 @@ export default function FinancialSummary({ data, formatCurrency }) {
               <h3 className="text-xl font-black text-slate-900">Resumen por metodo de pago</h3>
               <p className="text-sm text-slate-500">Montos liquidados directamente desde caja.</p>
             </div>
-            <Link to="/pos/cash-closing" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
-              <Banknote size={16} />
-              Ir a corte de caja
-            </Link>
+            {isElectron && (
+              <Link to="/pos/cash-closing" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+                <Banknote size={16} />
+                Ir a corte de caja
+              </Link>
+            )}
           </div>
 
           <div className="overflow-x-auto">

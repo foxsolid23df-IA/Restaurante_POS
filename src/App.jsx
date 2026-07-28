@@ -1,4 +1,4 @@
-import { BrowserRouter, HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, Outlet, useLocation, Link } from 'react-router-dom'
 import { Component, useEffect, Suspense } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from 'sonner'
@@ -32,6 +32,7 @@ import Settings from '@/pages/admin/Settings'
 import Licenses from '@/pages/admin/Licenses'
 import { useBranchStore } from '@/store/branchStore'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
+import { Monitor } from 'lucide-react'
 import Branches from '@/pages/admin/Branches'
 import SplitBill from '@/pages/SplitBill'
 import SalonLayout from '@/pages/admin/SalonLayout'
@@ -77,13 +78,39 @@ class AppErrorBoundary extends Component {
   }
 }
 
+// Default landing path depending on environment
+const getDefaultPath = () => (isElectron ? '/pos' : '/admin')
+
+// Shown when a desktop-only route is accessed from the web
+function DesktopOnly() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 max-w-md text-center">
+        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Monitor size={32} className="text-blue-600" />
+        </div>
+        <h1 className="text-xl font-black text-slate-950 mb-2">Solo disponible en app de escritorio</h1>
+        <p className="text-sm text-slate-500 mb-6">
+          El punto de venta, operaciones de venta y órdenes solo están disponibles en la aplicación de escritorio.
+        </p>
+        <Link
+          to="/admin"
+          className="inline-flex items-center justify-center gap-2 bg-slate-950 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors"
+        >
+          Ir al portal administrador
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 // Protected Route wrapper
 const adminRoutePermissions = [
   { prefix: '/admin/reports', permission: 'view_reports', fallbackRoles: ['admin', 'manager'] },
   { prefix: '/admin/inventory', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager'] },
   { prefix: '/admin/purchases', permission: 'manage_inventory', fallbackRoles: ['admin', 'manager', 'cashier'] },
   { prefix: '/admin/staff', permission: 'manage_staff', fallbackRoles: ['admin'] },
-  { prefix: '/admin/licenses', permission: 'manage_staff', fallbackRoles: ['admin'] },
+  { prefix: '/admin/licenses', permission: 'manage_staff', fallbackRoles: ['admin'], requireEmail: 'admin@restaurante.com' },
   { prefix: '/admin/settings', permission: 'access_admin', fallbackRoles: ['admin'] },
   { prefix: '/admin/branches', permission: null, fallbackRoles: ['admin'] },
   { prefix: '/admin', permission: 'access_admin', fallbackRoles: ['admin', 'manager'] }
@@ -115,8 +142,9 @@ function ProtectedRoute({ allowedRoles, requireSession = false, useAdminPermissi
   }
 
   if (allowedRoles && !allowedRoles.includes(profile?.role)) {
-    if (window.location.pathname === '/pos' || window.location.pathname === '/pos/') return null;
-    return <Navigate to="/pos" replace />
+    const defaultPath = getDefaultPath()
+    if (window.location.pathname === defaultPath || window.location.pathname === `${defaultPath}/`) return null;
+    return <Navigate to={defaultPath} replace />
   }
 
   if (location.pathname.startsWith('/pos') && !hasPermission(profile, 'access_pos', allowedRoles || [])) {
@@ -131,7 +159,11 @@ function ProtectedRoute({ allowedRoles, requireSession = false, useAdminPermissi
         : routeAccess.fallbackRoles.includes(profile?.role)
 
       if (!allowed) {
-        return <Navigate to="/pos" replace />
+        return <Navigate to={getDefaultPath()} replace />
+      }
+
+      if (routeAccess.requireEmail && user?.email?.toLowerCase() !== routeAccess.requireEmail.toLowerCase()) {
+        return <Navigate to={getDefaultPath()} replace />
       }
     }
   }
@@ -186,32 +218,40 @@ function App() {
                 </Route>
               </Route>
 
-              {/* POS Portal */}
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']} />}>
-                <Route path="/pos" element={<POSLayout />}>
-                  <Route index element={<Navigate to="/pos/tables" replace />} />
-                  <Route path="tables" element={<Tables />} />
-                  <Route path="orders" element={<POS />} />
-                  <Route path="active-orders" element={<ActiveOrders />} />
-                  <Route path="kitchen" element={<KitchenOrders />} />
-                  <Route path="bar" element={<BarOrders />} />
-                  <Route path="delivery" element={<Delivery />} />
-                  <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
-                  <Route path="reservations" element={<Reservations />} />
-                  <Route path="cash-closing" element={<CashClosing />} />
-                  <Route path="daily-closing" element={<DailyClosing />} />
-                  <Route path="loyalty" element={<LoyaltyProgram />} />
-                  <Route path="customer/:id" element={<CustomerProfile />} />
-                  <Route path="split-bill/:tableId" element={<SplitBill />} />
+              {/* POS Portal — only available in the desktop app (.exe) */}
+              {isElectron ? (
+                <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'cashier', 'waiter']} />}>
+                  <Route path="/pos" element={<POSLayout />}>
+                    <Route index element={<Navigate to="/pos/tables" replace />} />
+                    <Route path="tables" element={<Tables />} />
+                    <Route path="orders" element={<POS />} />
+                    <Route path="active-orders" element={<ActiveOrders />} />
+                    <Route path="kitchen" element={<KitchenOrders />} />
+                    <Route path="bar" element={<BarOrders />} />
+                    <Route path="delivery" element={<Delivery />} />
+                    <Route path="delivery-optimizer" element={<DeliveryOptimizer />} />
+                    <Route path="reservations" element={<Reservations />} />
+                    <Route path="cash-closing" element={<CashClosing />} />
+                    <Route path="daily-closing" element={<DailyClosing />} />
+                    <Route path="loyalty" element={<LoyaltyProgram />} />
+                    <Route path="customer/:id" element={<CustomerProfile />} />
+                    <Route path="split-bill/:tableId" element={<SplitBill />} />
+                  </Route>
                 </Route>
-              </Route>
+              ) : (
+                <Route path="/pos/*" element={<DesktopOnly />} />
+              )}
 
-              {/* Public Routes */}
-              <Route path="/menu/:tableId" element={<CustomerMenu />} />
+              {/* Public customer menu — also restricted to desktop app */}
+              {isElectron ? (
+                <Route path="/menu/:tableId" element={<CustomerMenu />} />
+              ) : (
+                <Route path="/menu/:tableId" element={<DesktopOnly />} />
+              )}
 
               {/* Global Redirects */}
-              <Route path="/" element={<Navigate to="/pos" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/" element={<Navigate to={isElectron ? '/pos' : '/admin'} replace />} />
+              <Route path="*" element={<Navigate to={isElectron ? '/pos' : '/admin'} replace />} />
             </Routes>
           </Suspense>
         </AppErrorBoundary>

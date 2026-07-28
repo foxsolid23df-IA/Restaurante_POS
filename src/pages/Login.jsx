@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
+import { isElectron } from '@/lib/electronBridge'
 import { Lock, Mail } from 'lucide-react'
 
 export default function Login() {
@@ -22,7 +23,7 @@ export default function Login() {
       if (profile?.role === 'admin' || profile?.role === 'manager') {
         navigate('/admin')
       } else {
-        navigate('/pos')
+        navigate(isElectron ? '/pos' : '/admin')
       }
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión')

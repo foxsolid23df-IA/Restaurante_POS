@@ -13,6 +13,7 @@ import {
   YAxis
 } from 'recharts'
 import { MetricCard } from './MetricCards'
+import { isElectron } from '@/lib/electronBridge'
 
 const COLORS = ['#059669', '#2563eb', '#f59e0b']
 
@@ -65,10 +66,12 @@ export default function DashboardOverview({ data, formatCurrency }) {
             <h3 className="text-lg font-black text-slate-900">Sin ventas liquidadas en el periodo</h3>
             <p className="text-sm text-slate-500 mt-1">Los reportes financieros se activan cuando existen pagos registrados en caja.</p>
           </div>
-          <Link to="/pos/active-orders" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
-            <ShoppingCart size={16} />
-            Ver ordenes activas
-          </Link>
+          {isElectron && (
+            <Link to="/pos/active-orders" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">
+              <ShoppingCart size={16} />
+              Ver ordenes activas
+            </Link>
+          )}
         </div>
       )}
 

@@ -8,6 +8,10 @@ function generatePassword() {
   return Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 export default function LicenseClientModal({ onClose, onSave }) {
   const inputClass = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-slate-900'
   const [formData, setFormData] = useState({
@@ -49,6 +53,7 @@ export default function LicenseClientModal({ onClose, onSave }) {
 
       if (!payload.full_name) throw new Error('El nombre es requerido')
       if (!payload.email) throw new Error('El correo es requerido')
+      if (!isValidEmail(payload.email)) throw new Error('El correo no tiene un formato válido (ej: usuario@empresa.com)')
       if (!payload.password) throw new Error('La contraseña es requerida')
 
       await licenseApi.createLicense(payload)
@@ -56,7 +61,10 @@ export default function LicenseClientModal({ onClose, onSave }) {
       toast.success('Cliente creado exitosamente')
     } catch (error) {
       console.error('Error creating license:', error)
-      toast.error(error.message || 'Error al crear cliente')
+      const message = error?.message || 'Error al crear cliente'
+      toast.error(`No se pudo crear el cliente: ${message}`, {
+        duration: 6000
+      })
     } finally {
       setLoading(false)
     }
