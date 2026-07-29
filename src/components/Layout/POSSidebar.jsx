@@ -15,14 +15,15 @@ import {
 import { useAuthStore } from '@/store/authStore'
 import { useBranchStore } from '@/store/branchStore'
 import { useRolePermissions } from '@/hooks/useRolePermissions'
+import { usePosThemeStore } from '@/store/posThemeStore'
 import { clsx } from 'clsx'
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 
 export default function POSSidebar() {
   const location = useLocation()
   const { profile, signOut } = useAuthStore()
   const { currentBranch } = useBranchStore()
-  const [isDarkMode, setIsDarkMode] = useState(true)
+  const { isDarkMode, toggleDarkMode } = usePosThemeStore()
   const { canViewCashClosing } = useRolePermissions()
 
   const menuGroups = useMemo(() => {
@@ -115,13 +116,13 @@ export default function POSSidebar() {
           </button>
           
           <div className="flex items-center gap-3 bg-white/5 p-1 rounded-full border border-white/5 px-3 py-2">
-             <div 
-              className={clsx(
-                "w-10 h-5 rounded-full relative transition-all duration-300 cursor-pointer",
-                isDarkMode ? "bg-[#28a779]" : "bg-white/20"
-              )}
-              onClick={() => setIsDarkMode(!isDarkMode)}
-            >
+              <div
+               className={clsx(
+                 "w-10 h-5 rounded-full relative transition-all duration-300 cursor-pointer",
+                 isDarkMode ? "bg-[#28a779]" : "bg-white/20"
+               )}
+               onClick={toggleDarkMode}
+             >
               <div className={clsx(
                 "absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300",
                 isDarkMode ? "left-6" : "left-1"

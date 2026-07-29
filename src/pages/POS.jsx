@@ -12,6 +12,7 @@ import InventoryAlerts from './components/InventoryAlerts'
 import CategoryFilter from '@/components/POS/CategoryFilter'
 import ProductGrid from '@/components/POS/ProductGrid'
 import POSCart from '@/components/POS/POSCart'
+import PreCheckModal from '@/components/POS/PreCheckModal'
 import { usePOSData } from '@/features/pos/hooks/usePOSData'
 import { toast } from 'sonner'
 
@@ -44,6 +45,7 @@ function POSContent() {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerList, setShowCustomerList] = useState(false)
+  const [showPreCheck, setShowPreCheck] = useState(false)
 
   // Sincronizar mesa seleccionada inicial desde el carrito
   useEffect(() => {
@@ -117,6 +119,11 @@ function POSContent() {
     }
   }
 
+  const handleShowPreCheck = () => {
+    if (!cart || isEmpty) return toast.error('Carrito vacío')
+    setShowPreCheck(true)
+  }
+
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (selectedCategory === 'all' || p.category_id === selectedCategory)
@@ -130,17 +137,17 @@ function POSContent() {
   const fullSelectedTable = tables.find(t => t.id === selectedTable)
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#f8fafc] dark:bg-slate-950 font-sans overflow-hidden">
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Header Section */}
-        <div className="bg-white border-b border-slate-100 p-6 space-y-6">
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-6 space-y-6">
            <div className="flex items-center justify-between gap-6">
               <div className="relative flex-1 group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-secondary transition-colors" size={20} strokeWidth={2.5} />
-                <input 
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 group-focus-within:text-secondary transition-colors" size={20} strokeWidth={2.5} />
+                <input
                   type="text"
                   placeholder="Buscar platillo o bebida..."
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-secondary/5 focus:border-secondary outline-none transition-all font-black"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-secondary/5 focus:border-secondary outline-none transition-all font-black dark:text-white dark:placeholder:text-slate-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -152,21 +159,21 @@ function POSContent() {
                 <MetricCard icon={<Users size={16} strokeWidth={2.5} />} label="Mesas" value={`${tableMetrics?.occupied || 0}/${tableMetrics?.total || 0}`} color="warning" />
               </div>
            </div>
-           
+
            <div className="flex items-center gap-4">
               <div className="flex-1">
-                <CategoryFilter 
+                <CategoryFilter
                   categories={categories}
                   selectedCategory={selectedCategory}
                   onSelectCategory={setSelectedCategory}
                 />
               </div>
-              
-              <div className="flex items-center gap-3 border-l border-slate-100 pl-4">
+
+              <div className="flex items-center gap-3 border-l border-slate-100 dark:border-slate-800 pl-4">
                 <select
                   value={selectedTable || ''}
                   onChange={(e) => setSelectedTable(e.target.value || null)}
-                  className="px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-secondary outline-none font-black text-xs uppercase tracking-widest transition-all min-w-[180px] cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secondary outline-none font-black text-xs uppercase tracking-widest transition-all min-w-[180px] cursor-pointer dark:text-white"
                 >
                   <option value="">Seleccionar Mesa</option>
                   {tables.filter(t => t.status === 'available' || t.id === selectedTable).map(table => (
@@ -175,43 +182,43 @@ function POSContent() {
                 </select>
 
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setShowCustomerList(!showCustomerList)}
-                    className="px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2 hover:bg-white transition-all font-black text-xs uppercase tracking-widest min-w-[200px]"
+                    className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center gap-2 hover:bg-white dark:hover:bg-slate-700 transition-all font-black text-xs uppercase tracking-widest min-w-[200px] dark:text-white"
                   >
-                    <UserCircle size={18} className={selectedCustomer ? "text-secondary" : "text-slate-300"} strokeWidth={2.5} />
+                    <UserCircle size={18} className={selectedCustomer ? "text-secondary" : "text-slate-300 dark:text-slate-500"} strokeWidth={2.5} />
                     <span className="truncate">{selectedCustomer ? selectedCustomer.name : "Venta General"}</span>
                     <ChevronDown size={14} className="ml-auto opacity-50" strokeWidth={3} />
                   </button>
 
                   {showCustomerList && (
-                    <div className="absolute top-full right-0 mt-3 w-72 glass rounded-2xl shadow-2xl z-50 overflow-hidden border border-white/20 animate-in fade-in slide-in-from-top-2">
-                       <div className="p-3 bg-white/50">
-                        <input 
-                          type="text" 
-                          placeholder="Buscar cliente..." 
-                          className="w-full px-3 py-2 bg-white rounded-xl text-xs font-black border-none focus:ring-2 focus:ring-secondary/20"
+                    <div className="absolute top-full right-0 mt-3 w-72 glass dark:bg-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden border border-white/20 dark:border-slate-700 animate-in fade-in slide-in-from-top-2">
+                       <div className="p-3 bg-white/50 dark:bg-slate-700/50">
+                        <input
+                          type="text"
+                          placeholder="Buscar cliente..."
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 rounded-xl text-xs font-black border-none focus:ring-2 focus:ring-secondary/20 dark:text-white dark:placeholder:text-slate-500"
                           value={customerSearch}
                           onChange={(e) => setCustomerSearch(e.target.value)}
                           autoFocus
                         />
                       </div>
-                      <div className="max-h-64 overflow-y-auto custom-scrollbar bg-white/30 backdrop-blur-md">
-                        <button 
+                      <div className="max-h-64 overflow-y-auto custom-scrollbar bg-white/30 dark:bg-slate-900/50 backdrop-blur-md">
+                        <button
                           onClick={() => { setSelectedCustomer(null); setShowCustomerList(false); }}
-                          className="w-full text-left px-4 py-3 text-sm hover:bg-white/50 transition-colors flex justify-between items-center"
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors flex justify-between items-center"
                         >
-                          <span className="font-black text-primary uppercase text-[10px] tracking-widest">Venta General</span>
+                          <span className="font-black text-primary dark:text-white uppercase text-[10px] tracking-widest">Venta General</span>
                           {!selectedCustomer && <Check size={14} className="text-secondary" strokeWidth={3} />}
                         </button>
                         {filteredCustomers.map(c => (
-                          <button 
+                          <button
                             key={c.id}
                             onClick={() => { setSelectedCustomer(c); setShowCustomerList(false); }}
-                            className="w-full text-left px-4 py-4 hover:bg-white/50 transition-colors border-t border-white/10"
+                            className="w-full text-left px-4 py-4 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors border-t border-white/10 dark:border-slate-700"
                           >
-                            <div className="font-black text-primary text-xs uppercase tracking-tight">{c.name}</div>
-                            <div className="text-[9px] font-black text-slate-400 mt-0.5 uppercase tracking-tighter">
+                            <div className="font-black text-primary dark:text-white text-xs uppercase tracking-tight">{c.name}</div>
+                            <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-tighter">
                               {c.phone || c.email} • <span className="text-secondary">{c.loyalty_points} pts</span>
                             </div>
                           </button>
@@ -225,8 +232,8 @@ function POSContent() {
         </div>
 
         {/* Product Grid Container */}
-        <ProductGrid 
-          products={filteredProducts} 
+        <ProductGrid
+          products={filteredProducts}
           onAddToCart={handleAddToCart}
         />
       </div>
@@ -239,8 +246,18 @@ function POSContent() {
         onRemove={removeFromCart}
         onUpdateQuantity={handleUpdateQuantity}
         onCheckout={handleCreateOrder}
+        onPrintPreCheck={handleShowPreCheck}
         loading={orderLoading}
         printingLoading={printingLoading}
+        selectedTable={fullSelectedTable || selectedTable}
+        taxName={settings?.tax_name}
+      />
+      
+      <PreCheckModal
+        isOpen={showPreCheck}
+        onClose={() => setShowPreCheck(false)}
+        cart={cart}
+        totals={totals}
         selectedTable={fullSelectedTable || selectedTable}
         taxName={settings?.tax_name}
       />
@@ -252,19 +269,19 @@ function POSContent() {
 
 function MetricCard({ icon, label, value, color }) {
   const colors = {
-    secondary: "text-secondary bg-blue-50/50 border-blue-100",
-    success: "text-success bg-emerald-50/50 border-emerald-100",
-    warning: "text-warning bg-amber-50/50 border-amber-100",
+    secondary: "text-secondary bg-blue-50/50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800",
+    success: "text-success bg-emerald-50/50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800",
+    warning: "text-warning bg-amber-50/50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800",
   }
-  
+
   return (
     <div className={`px-4 py-2 rounded-2xl border ${colors[color]} flex items-center gap-3 shadow-sm transition-all hover:shadow-md cursor-default`}>
-      <div className="p-2 bg-white rounded-lg shadow-sm">
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
         {icon}
       </div>
       <div>
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="text-sm font-black text-primary leading-none tracking-tight font-display">{value}</p>
+        <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className="text-sm font-black text-primary dark:text-white leading-none tracking-tight font-display">{value}</p>
       </div>
     </div>
   )

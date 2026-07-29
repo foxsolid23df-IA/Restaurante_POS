@@ -8,17 +8,26 @@ export const usePOSData = () => {
 
     const categoriesQuery = useSuspenseQuery({
         queryKey: ['categories'],
-        queryFn: posApi.getCategories
+        queryFn: posApi.getCategories,
+        staleTime: 1000 * 60 * 2,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true
     })
 
     const productsQuery = useSuspenseQuery({
         queryKey: ['products'],
-        queryFn: posApi.getProducts
+        queryFn: posApi.getProducts,
+        staleTime: 1000 * 60 * 2,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true
     })
 
     const tablesQuery = useSuspenseQuery({
         queryKey: ['pos-tables', branchId],
-        queryFn: () => posApi.getTables(branchId)
+        queryFn: () => posApi.getTables(branchId),
+        staleTime: 1000 * 60 * 2,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true
     })
 
     return {

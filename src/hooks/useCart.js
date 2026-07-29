@@ -181,7 +181,7 @@ export const useCartStore = create(
           ...state.carts,
           [cartId]: {
             ...cart,
-            customer_info,
+            customerInfo,
             updated_at: new Date().toISOString()
           }
         }

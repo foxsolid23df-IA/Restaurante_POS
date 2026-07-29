@@ -109,7 +109,7 @@ export function useOrders() {
           status: 'pending',
           payment_status: 'pending',
           customer_id: cartData.customer_id || cart.customer_id || null,
-          customer_info: cartData.customer_info || cart.customer_info,
+          customer_info: cartData.customer_info || cart.customerInfo || cart.customer_info,
           notes: cartData.notes,
           created_at: new Date().toISOString()
         })
