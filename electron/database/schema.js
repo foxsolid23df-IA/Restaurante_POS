@@ -433,6 +433,7 @@ export function initializeSchema(db) {
       ip_address TEXT,
       port INTEGER DEFAULT 9100,
       is_active INTEGER NOT NULL DEFAULT 1,
+      is_default INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
@@ -553,7 +554,8 @@ export function initializeSchema(db) {
   const columnsToAdd = [
     { table: 'profiles', column: 'pin_code_hash', type: 'TEXT' },
     { table: 'profiles', column: 'permissions', type: 'TEXT DEFAULT \'{}\'' },
-    { table: 'profiles', column: 'preferred_language', type: 'TEXT DEFAULT \'es\'' }
+    { table: 'profiles', column: 'preferred_language', type: 'TEXT DEFAULT \'es\'' },
+    { table: 'printers', column: 'is_default', type: 'INTEGER NOT NULL DEFAULT 0' }
   ]
 
   for (const { table, column, type } of columnsToAdd) {

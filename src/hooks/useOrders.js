@@ -6,6 +6,7 @@ import { useBusinessStore } from './useBusinessSettings'
 import { useBranchStore } from '@/store/branchStore'
 import { useAuthStore } from '@/store/authStore'
 import { crmApi } from '@/features/crm/api/crmApi'
+import { salonApi } from '@/features/salon/api/salonApi'
 
 // Hook principal
 export function useOrders() {
@@ -133,6 +134,15 @@ export function useOrders() {
         .insert(orderItems)
 
       if (itemsError) throw itemsError
+
+      // Marcar mesa como ocupada para evitar doble asignacion
+      try {
+        if (order.table_id) {
+          await salonApi.setTableStatus(order.table_id, 'occupied')
+        }
+      } catch (tableError) {
+        console.warn('No se pudo marcar la mesa como ocupada:', tableError)
+      }
 
       // Verificar disponibilidad de inventario sin bloquear la venta en MVP.
       const availabilityCheck = await checkInventoryAvailability(orderItems)

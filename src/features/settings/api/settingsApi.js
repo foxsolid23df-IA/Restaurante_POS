@@ -166,7 +166,8 @@ export const settingsApi = {
           connection_type: printer.connection_type || 'network',
           ip_address: printer.ip_address || null,
           port: Number.parseInt(printer.port || 9100, 10),
-          is_active: printer.is_active !== false
+          is_active: printer.is_active !== false,
+          is_default: Boolean(printer.is_default)
         }
       },
       'guardar la impresora'

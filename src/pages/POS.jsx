@@ -1,5 +1,5 @@
 import { Suspense, useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useBusinessStore } from '@/hooks/useBusinessSettings'
 import { useCart } from '@/hooks/useCart'
@@ -7,17 +7,20 @@ import { useOrders } from '@/hooks/useOrders'
 import { useTables } from '@/hooks/useTables'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useComandaPrinter } from '@/hooks/useComandaPrinter'
-import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search } from 'lucide-react'
+import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search, MapPin } from 'lucide-react'
 import InventoryAlerts from './components/InventoryAlerts'
 import CategoryFilter from '@/components/POS/CategoryFilter'
 import ProductGrid from '@/components/POS/ProductGrid'
 import POSCart from '@/components/POS/POSCart'
 import PreCheckModal from '@/components/POS/PreCheckModal'
+import TableSelectorModal from '@/components/POS/TableSelectorModal'
 import { usePOSData } from '@/features/pos/hooks/usePOSData'
 import { toast } from 'sonner'
+import { clsx } from 'clsx'
 
 function POSContent() {
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { profile } = useAuthStore()
   const { settings } = useBusinessStore()
   const { categories, products } = usePOSData()
@@ -35,17 +38,19 @@ function POSContent() {
   } = useOrders()
   
   const { 
-    tables, metrics: tableMetrics 
+    tables, areas, metrics: tableMetrics 
   } = useTables()
 
   const { customers } = useCustomers()
-  const { processOrderComanda, printingLoading } = useComandaPrinter()
+  const { processOrderComanda, printingLoading, printPreCheck } = useComandaPrinter()
   
-  const [selectedTable, setSelectedTable] = useState(location.state?.table?.id || null)
+  const initialTableId = searchParams.get('tableId') || location.state?.table?.id || null
+  const [selectedTable, setSelectedTable] = useState(initialTableId)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerList, setShowCustomerList] = useState(false)
   const [showPreCheck, setShowPreCheck] = useState(false)
+  const [showTableSelector, setShowTableSelector] = useState(false)
 
   // Sincronizar mesa seleccionada inicial desde el carrito
   useEffect(() => {
@@ -60,6 +65,14 @@ function POSContent() {
       setTable(cart.id, selectedTable)
     }
   }, [selectedTable, cart?.id, cart?.table_id, setTable])
+
+  const handleSelectTable = (table) => {
+    setSelectedTable(table.id)
+    setShowTableSelector(false)
+    if (cart?.id && String(cart.table_id) !== String(table.id)) {
+      setTable(cart.id, table.id)
+    }
+  }
 
   useEffect(() => {
     if (selectedCategory !== 'all' && !categories.some((category) => category.id === selectedCategory)) {
@@ -170,16 +183,21 @@ function POSContent() {
               </div>
 
               <div className="flex items-center gap-3 border-l border-slate-100 dark:border-slate-800 pl-4">
-                <select
-                  value={selectedTable || ''}
-                  onChange={(e) => setSelectedTable(e.target.value || null)}
-                  className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secondary outline-none font-black text-xs uppercase tracking-widest transition-all min-w-[180px] cursor-pointer dark:text-white"
+                <button
+                  type="button"
+                  onClick={() => setShowTableSelector(true)}
+                  className={clsx(
+                    "px-4 py-2.5 border rounded-xl flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all min-w-[180px]",
+                    selectedTable
+                      ? "bg-slate-900 dark:bg-secondary text-white border-slate-900 dark:border-secondary"
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700"
+                  )}
                 >
-                  <option value="">Seleccionar Mesa</option>
-                  {tables.filter(t => t.status === 'available' || t.id === selectedTable).map(table => (
-                    <option key={table.id} value={table.id}>{table.name}</option>
-                  ))}
-                </select>
+                  <MapPin size={16} strokeWidth={2.5} />
+                  <span className="truncate">
+                    {fullSelectedTable ? fullSelectedTable.name : 'Seleccionar Mesa'}
+                  </span>
+                </button>
 
                 <div className="relative">
                   <button
@@ -260,6 +278,17 @@ function POSContent() {
         totals={totals}
         selectedTable={fullSelectedTable || selectedTable}
         taxName={settings?.tax_name}
+        onPrint={() => printPreCheck({ cart, totals, selectedTable: fullSelectedTable || selectedTable, taxName: settings?.tax_name })}
+      />
+
+      <TableSelectorModal
+        isOpen={showTableSelector}
+        onClose={() => setShowTableSelector(false)}
+        areas={areas}
+        tables={tables}
+        selectedTableId={selectedTable}
+        onSelectTable={handleSelectTable}
+        title={selectedTable ? 'Cambiar mesa' : 'Seleccionar mesa'}
       />
       
       <InventoryAlerts />

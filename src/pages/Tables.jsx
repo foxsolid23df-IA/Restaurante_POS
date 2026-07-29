@@ -56,7 +56,9 @@ function TablesContent() {
   }
 
   const goToOrder = (table) => {
-    navigate('/pos/orders', { state: { table } })
+    const params = new URLSearchParams()
+    params.set('tableId', table.id)
+    navigate(`/pos/orders?${params.toString()}`, { state: { table } })
   }
 
   if (!branchId) {

@@ -1,6 +1,7 @@
 import { X, Receipt, Printer } from 'lucide-react'
+import { clsx } from 'clsx'
 
-export default function PreCheckModal({ isOpen, onClose, cart, totals, selectedTable, taxName = 'IVA' }) {
+export default function PreCheckModal({ isOpen, onClose, cart, totals, selectedTable, taxName = 'IVA', onPrint }) {
   if (!isOpen || !cart) return null
 
   const tableName = selectedTable?.name || selectedTable || 'Sin mesa'
@@ -69,12 +70,23 @@ export default function PreCheckModal({ isOpen, onClose, cart, totals, selectedT
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
+        <div className="p-6 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+          {onPrint && (
+            <button
+              onClick={onPrint}
+              className="flex-1 py-3.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <Printer size={16} strokeWidth={2.5} />
+              Imprimir
+            </button>
+          )}
           <button
             onClick={onClose}
-            className="w-full py-3.5 bg-slate-900 dark:bg-secondary text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            className={clsx(
+              "py-3.5 bg-slate-900 dark:bg-secondary text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:opacity-90 transition-opacity flex items-center justify-center gap-2",
+              onPrint ? "flex-1" : "w-full"
+            )}
           >
-            <Printer size={16} strokeWidth={2.5} />
             Cerrar vista
           </button>
         </div>

@@ -6,7 +6,9 @@ export default function PaymentModal({
   onClose, 
   total, 
   onConfirm,
-  order 
+  order,
+  printOnPayment = true,
+  onPrintOnPaymentChange
 }) {
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [cashReceived, setCashReceived] = useState('')
@@ -222,6 +224,19 @@ export default function PaymentModal({
           <div className="mt-8 bg-slate-50 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Resumen del Pago</h3>
             <div className="space-y-3">
+              {onPrintOnPaymentChange && (
+                <label className="flex items-center gap-3 cursor-pointer pb-2 border-b border-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={printOnPayment}
+                    onChange={(e) => onPrintOnPaymentChange(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    Imprimir ticket automáticamente al confirmar
+                  </span>
+                </label>
+              )}
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
                 <span>${total.toFixed(2)}</span>

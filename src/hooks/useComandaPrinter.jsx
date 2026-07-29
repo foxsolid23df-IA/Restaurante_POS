@@ -169,31 +169,83 @@ export function useComandaPrinter() {
       if (orderError) throw orderError
 
       const settings = useBusinessStore.getState().settings
-      
+      const taxRate = settings?.tax_rate ? parseFloat(settings.tax_rate) : 0.16
+      const subtotal = order.total_amount / (1 + taxRate)
+      const tax = order.total_amount - subtotal
+
       const ticketData = {
+        business_name: settings?.name,
         order_id: orderId,
         table_name: order.tables?.name,
         waiter_name: order.user?.full_name,
-        subtotal: order.total_amount / (1 + (settings?.tax_rate || 0.16)),
-        tax: order.total_amount - (order.total_amount / (1 + (settings?.tax_rate || 0.16))),
+        subtotal,
+        tax,
         tax_name: settings?.tax_name || 'IVA',
         total: order.total_amount,
         items: order.order_items.map(item => ({
           name: item.products?.name,
           quantity: item.quantity,
-          price: item.price_at_order
+          price: item.price_at_order,
+          notes: item.notes
         }))
       }
 
       const escPosData = ESC_POS.formatTicket(ticketData, settings)
-      
-      // Usar impresora general (la primera que no sea cocina/bar)
-      const printer = printers.find(p => !p.name.toLowerCase().includes('cocina') && !p.name.toLowerCase().includes('bar')) 
-                      || printers[0]
 
-      if (printer) {
-        await printerBridge.printRaw(escPosData, printer)
+      // Impresora por defecto: la marcada como default, o la primera general disponible
+      const printer = printers.find(p => p.is_default)
+        || printers.find(p => !p.name.toLowerCase().includes('cocina') && !p.name.toLowerCase().includes('bar'))
+        || printers[0]
+
+      if (!printer) {
+        throw new Error('No hay impresoras configuradas para imprimir el ticket')
       }
+
+      await printerBridge.printRaw(escPosData, printer)
+      return true
+    } catch (err) {
+      setError(err.message)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [printers])
+
+  // Imprimir pre-cuenta desde carrito
+  const printPreCheck = useCallback(async ({ cart, totals, selectedTable, taxName }) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const settings = useBusinessStore.getState().settings
+      const tableName = selectedTable?.name || selectedTable || 'Sin mesa'
+      const preCheckData = {
+        business_name: settings?.name,
+        order_id: 'PRE-CUENTA',
+        table_name: tableName,
+        waiter_name: '',
+        subtotal: totals?.subtotal || 0,
+        tax: totals?.tax || 0,
+        tax_name: taxName || settings?.tax_name || 'IVA',
+        total: totals?.total || 0,
+        items: cart?.items?.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          notes: item.notes
+        })) || []
+      }
+
+      const escPosData = ESC_POS.formatTicket(preCheckData, settings)
+
+      const printer = printers.find(p => p.is_default)
+        || printers.find(p => !p.name.toLowerCase().includes('cocina') && !p.name.toLowerCase().includes('bar'))
+        || printers[0]
+
+      if (!printer) {
+        throw new Error('No hay impresoras configuradas para imprimir la pre-cuenta')
+      }
+
+      await printerBridge.printRaw(escPosData, printer)
       return true
     } catch (err) {
       setError(err.message)
@@ -231,6 +283,7 @@ export function useComandaPrinter() {
     printComandaByArea,
     processOrderComanda,
     printTicket,
+    printPreCheck,
     testPrinter,
     refreshPrinters: loadPrinters,
     activePrinters: {

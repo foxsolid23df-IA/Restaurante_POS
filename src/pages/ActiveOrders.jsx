@@ -7,15 +7,18 @@ import ActiveOrderCard from '@/components/Orders/ActiveOrderCard'
 import OrderDetailsModal from '@/components/Orders/OrderDetailsModal'
 import { toast } from 'sonner'
 import { crmApi } from '@/features/crm/api/crmApi'
+import { useComandaPrinter } from '@/hooks/useComandaPrinter'
 
 export default function ActiveOrders() {
   const { profile } = useAuthStore()
+  const { printTicket } = useComandaPrinter()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [printOnPayment, setPrintOnPayment] = useState(true)
 
   useEffect(() => {
     loadOrders()
@@ -140,6 +143,19 @@ export default function ActiveOrders() {
         toast.warning('Pago correcto, pero no se pudieron actualizar puntos de lealtad')
       }
 
+      // Imprimir ticket automaticamente si esta habilitado
+      if (printOnPayment) {
+        try {
+          const printed = await printTicket(selectedOrder.id)
+          if (!printed) {
+            toast.warning('Pago registrado, pero no se pudo imprimir el ticket')
+          }
+        } catch (printError) {
+          console.warn('Error imprimiendo ticket:', printError)
+          toast.warning('Pago registrado, pero no se pudo imprimir el ticket')
+        }
+      }
+
       // Mostrar mensaje de éxito
       let message = 'Pago procesado correctamente'
       if (paymentData.method === 'cash' && paymentData.change > 0) {
@@ -214,7 +230,14 @@ export default function ActiveOrders() {
                  setShowDetailsModal(true)
               }}
               onPayment={handleCompleteOrder}
-              onPrint={() => window.print()} // TODO: Use printer bridge hook
+              onPrint={async () => {
+                const printed = await printTicket(order.id)
+                if (printed) {
+                  toast.success('Ticket enviado a impresora')
+                } else {
+                  toast.error('No se pudo imprimir el ticket')
+                }
+              }}
               onCancel={cancelOrder}
               userRole={profile?.role}
             />
@@ -233,6 +256,8 @@ export default function ActiveOrders() {
         total={parseFloat(selectedOrder?.total_amount || 0)}
         onConfirm={processPayment}
         order={selectedOrder}
+        printOnPayment={printOnPayment}
+        onPrintOnPaymentChange={setPrintOnPayment}
       />
 
       {/* Details Modal */}
