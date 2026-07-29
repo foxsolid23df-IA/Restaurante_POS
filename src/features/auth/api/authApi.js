@@ -24,6 +24,17 @@ const queryLocalProfileByPin = async (pin, pinHash) => {
     return rows || []
 }
 
+// Fallback that also checks plain-text pin_code locally
+const queryLocalProfileByPlainPin = async (pin) => {
+    const rows = await localDb.query(
+        `SELECT id, full_name, role, is_active, branch_id, permissions, pin_code, pin_code_hash
+         FROM profiles
+         WHERE is_active = 1 AND pin_code = ?`,
+        [pin]
+    )
+    return rows || []
+}
+
 const upsertLocalProfile = async (profile, pin = null, pinHash = null) => {
     await localDb.run(
         `INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, pin_code_hash, is_active, email, permissions, branch_id, created_at, updated_at)
@@ -158,6 +169,14 @@ export const authApi = {
                 return result
             } catch (fallbackErr) {
                 log('ERROR', `Remote verify failed: ${fallbackErr.message}`)
+
+                // Last resort: try plain-text pin_code locally (useful when pgcrypto is missing in Supabase)
+                const plainRows = await queryLocalProfileByPlainPin(pin)
+                if (plainRows.length > 0) {
+                    log('INFO', `Plain-text PIN match: ${plainRows[0].full_name}`)
+                    return profileFromRow(plainRows[0])
+                }
+
                 throw new Error(fallbackErr.message)
             }
         }
