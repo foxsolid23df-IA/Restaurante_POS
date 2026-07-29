@@ -227,6 +227,19 @@ function setupDatabaseHandlers() {
     )
   }
 
+  const withDefaults = (row, defaults = {}) => {
+    const normalized = normalizeRow(row)
+    const result = { ...normalized }
+    for (const [key, defaultValue] of Object.entries(defaults)) {
+      if (result[key] === null || result[key] === undefined) {
+        result[key] = defaultValue
+      }
+    }
+    return result
+  }
+
+  const now = new Date().toISOString()
+
   ipcMain.handle('db:seed', async (event, seedData) => {
     try {
       // Disable foreign keys during seed to avoid ordering issues with partial data
@@ -234,42 +247,43 @@ function setupDatabaseHandlers() {
 
       const transaction = db.transaction((data) => {
         for (const branch of data.branches || []) {
-          const b = normalizeRow(branch)
+          const b = withDefaults(branch, { timezone: 'America/Mexico_City', currency: 'MXN', is_active: 1, created_at: now, updated_at: now })
           db.prepare('INSERT OR REPLACE INTO branches (id, name, code, address, phone, email, timezone, is_active, currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(b.id, b.name, b.code, b.address, b.phone, b.email, b.timezone, b.is_active, b.currency, b.created_at, b.updated_at)
         }
         for (const menu of data.menus || []) {
-          const m = normalizeRow(menu)
+          const m = withDefaults(menu, { is_active: 1, created_at: now, updated_at: now })
           db.prepare('INSERT OR REPLACE INTO menus (id, branch_id, name, start_time, end_time, active_days, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(m.id, m.branch_id, m.name, m.start_time, m.end_time, m.active_days, m.is_active, m.created_at, m.updated_at)
         }
         for (const profile of data.profiles || []) {
-          const p = normalizeRow(profile, ['permissions'])
+          const p = withDefaults(profile, { role: 'waiter', is_active: 1, created_at: now, updated_at: now })
+          const normalized = normalizeRow(p, ['permissions'])
           db.prepare('INSERT OR REPLACE INTO profiles (id, full_name, role, pin_code, pin_code_hash, is_active, email, permissions, branch_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-            .run(p.id, p.full_name, p.role, p.pin_code, p.pin_code_hash, p.is_active, p.email, p.permissions, p.branch_id, p.created_at, p.updated_at)
+            .run(normalized.id, normalized.full_name, normalized.role, normalized.pin_code, normalized.pin_code_hash, normalized.is_active, normalized.email, normalized.permissions, normalized.branch_id, normalized.created_at, normalized.updated_at)
         }
         for (const category of data.categories || []) {
-          const c = normalizeRow(category)
+          const c = withDefaults(category, { created_at: now })
           db.prepare('INSERT OR REPLACE INTO categories (id, name, menu_id, printer_id, created_at) VALUES (?, ?, ?, ?, ?)')
             .run(c.id, c.name, c.menu_id, c.printer_id, c.created_at)
         }
         for (const product of data.products || []) {
-          const p = normalizeRow(product)
+          const p = withDefaults(product, { is_active: 1, is_featured: 0, sort_order: 0, preparation_time: 0, created_at: now, updated_at: now })
           db.prepare('INSERT OR REPLACE INTO products (id, category_id, name, price, image_url, is_active, description, sku, branch_id, preparation_time, is_featured, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(p.id, p.category_id, p.name, p.price, p.image_url, p.is_active, p.description, p.sku, p.branch_id, p.preparation_time, p.is_featured, p.sort_order, p.created_at, p.updated_at)
         }
         for (const area of data.areas || []) {
-          const a = normalizeRow(area)
+          const a = withDefaults(area, { color: '#2563eb', sort_order: 0, is_active: 1, created_at: now, updated_at: now })
           db.prepare('INSERT OR REPLACE INTO areas (id, name, branch_id, description, color, sort_order, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(a.id, a.name, a.branch_id, a.description, a.color, a.sort_order, a.is_active, a.created_at, a.updated_at)
         }
         for (const table of data.tables || []) {
-          const t = normalizeRow(table)
+          const t = withDefaults(table, { capacity: 4, status: 'available', shape: 'rounded', x_pos: 20, y_pos: 20, rotation: 0, sort_order: 0, is_active: 1, created_at: now, updated_at: now })
           db.prepare('INSERT OR REPLACE INTO tables (id, area_id, name, capacity, status, branch_id, shape, x_pos, y_pos, rotation, sort_order, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(t.id, t.area_id, t.name, t.capacity, t.status, t.branch_id, t.shape, t.x_pos, t.y_pos, t.rotation, t.sort_order, t.is_active, t.created_at, t.updated_at)
         }
         for (const setting of data.settings || []) {
-          const s = normalizeRow(setting)
+          const s = withDefaults(setting, { currency: 'MXN', tax_rate: 0.16, tax_name: 'IVA', points_per_currency: 1, currency_unit_amount: 10, daily_points_limit: 1000, created_at: now, updated_at: now })
           db.prepare('INSERT OR REPLACE INTO business_settings (id, name, business_name, rfc, address, phone, email, currency, tax_rate, tax_name, ticket_header, ticket_footer, points_per_currency, currency_unit_amount, daily_points_limit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             .run(s.id, s.name, s.business_name, s.rfc, s.address, s.phone, s.email, s.currency, s.tax_rate, s.tax_name, s.ticket_header, s.ticket_footer, s.points_per_currency, s.currency_unit_amount, s.daily_points_limit, s.created_at, s.updated_at)
         }
