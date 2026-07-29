@@ -125,13 +125,15 @@ export default function ActiveOrders() {
 
       if (orderError) throw orderError
 
-      // Update table status
-      const { error: tableError } = await supabase
-        .from('tables')
-        .update({ status: 'available' })
-        .eq('id', selectedOrder.table_id)
+      // Update table status (only for dine-in orders)
+      if (selectedOrder.table_id) {
+        const { error: tableError } = await supabase
+          .from('tables')
+          .update({ status: 'available' })
+          .eq('id', selectedOrder.table_id)
 
-      if (tableError) throw tableError
+        if (tableError) throw tableError
+      }
 
       try {
         const loyaltyResult = await crmApi.awardOrderLoyaltyPoints(selectedOrder.id)
@@ -184,12 +186,14 @@ export default function ActiveOrders() {
 
       if (orderError) throw orderError
 
-      const { error: tableError } = await supabase
-        .from('tables')
-        .update({ status: 'available' })
-        .eq('id', tableId)
+      if (tableId) {
+        const { error: tableError } = await supabase
+          .from('tables')
+          .update({ status: 'available' })
+          .eq('id', tableId)
 
-      if (tableError) throw tableError
+        if (tableError) throw tableError
+      }
 
       toast.success('Orden cancelada')
       loadOrders()

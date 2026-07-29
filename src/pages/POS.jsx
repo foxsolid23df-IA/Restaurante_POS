@@ -7,7 +7,7 @@ import { useOrders } from '@/hooks/useOrders'
 import { useTables } from '@/hooks/useTables'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useComandaPrinter } from '@/hooks/useComandaPrinter'
-import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search, MapPin } from 'lucide-react'
+import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search, MapPin, ShoppingBag, UtensilsCrossed } from 'lucide-react'
 import InventoryAlerts from './components/InventoryAlerts'
 import CategoryFilter from '@/components/POS/CategoryFilter'
 import ProductGrid from '@/components/POS/ProductGrid'
@@ -30,7 +30,7 @@ function POSContent() {
   
   const { 
     cart, addToCart, removeFromCart, updateQuantity, clearCurrentCart,
-    totals, isEmpty, setTable 
+    totals, isEmpty, setTable, setOrderType
   } = useCart()
   
   const { 
@@ -51,26 +51,47 @@ function POSContent() {
   const [showCustomerList, setShowCustomerList] = useState(false)
   const [showPreCheck, setShowPreCheck] = useState(false)
   const [showTableSelector, setShowTableSelector] = useState(false)
+  const [orderType, setOrderTypeState] = useState(cart?.order_type || 'dine_in')
+  const [takeawayInfo, setTakeawayInfo] = useState({ name: '', phone: '', note: '' })
 
-  // Sincronizar mesa seleccionada inicial desde el carrito
+  // Sincronizar tipo de orden y mesa desde el carrito
   useEffect(() => {
-    if (cart?.table_id && !selectedTable) {
+    if (cart?.order_type && cart.order_type !== orderType) {
+      setOrderTypeState(cart.order_type)
+    }
+  }, [cart?.order_type, orderType])
+
+  useEffect(() => {
+    if (orderType === 'dine_in' && cart?.table_id && !selectedTable) {
       setSelectedTable(cart.table_id)
     }
-  }, [cart?.table_id, selectedTable])
+  }, [cart?.table_id, selectedTable, orderType])
 
   // Sincronizar carrito desde mesa seleccionada
   useEffect(() => {
-    if (selectedTable && cart && String(cart.table_id) !== String(selectedTable)) {
+    if (orderType === 'dine_in' && selectedTable && cart && String(cart.table_id) !== String(selectedTable)) {
       setTable(cart.id, selectedTable)
     }
-  }, [selectedTable, cart?.id, cart?.table_id, setTable])
+  }, [selectedTable, cart?.id, cart?.table_id, setTable, orderType])
 
   const handleSelectTable = (table) => {
     setSelectedTable(table.id)
     setShowTableSelector(false)
     if (cart?.id && String(cart.table_id) !== String(table.id)) {
       setTable(cart.id, table.id)
+    }
+  }
+
+  const handleOrderTypeChange = (type) => {
+    setOrderTypeState(type)
+    if (cart?.id) {
+      setOrderType(cart.id, type)
+    }
+    if (type === 'takeaway') {
+      setSelectedTable(null)
+      if (cart?.id) {
+        setTable(cart.id, null)
+      }
     }
   }
 
@@ -105,15 +126,25 @@ function POSContent() {
   }
 
   const handleCreateOrder = async () => {
-    if (!selectedTable) return toast.error('Selecciona una mesa')
+    if (orderType === 'dine_in' && !selectedTable) return toast.error('Selecciona una mesa')
     if (!cart || isEmpty) return toast.error('Carrito vacío')
     if (!profile) return toast.error('Sesión no válida')
 
     try {
+      const customerInfo = orderType === 'takeaway'
+        ? {
+            name: takeawayInfo.name?.trim() || null,
+            phone: takeawayInfo.phone?.trim() || null,
+            note: takeawayInfo.note?.trim() || null
+          }
+        : null
+
       const orderData = {
-        table_id: selectedTable.id || selectedTable,
+        order_type: orderType,
+        table_id: orderType === 'dine_in' ? (selectedTable.id || selectedTable) : null,
         customer_id: selectedCustomer?.id,
-        notes: ''
+        customer_info: customerInfo,
+        notes: orderType === 'takeaway' ? takeawayInfo.note?.trim() || '' : ''
       }
 
       const result = await createOrderFromCart(orderData, profile.id)
@@ -127,6 +158,7 @@ function POSContent() {
       clearCurrentCart()
       setSelectedTable(null)
       setSelectedCustomer(null)
+      setTakeawayInfo({ name: '', phone: '', note: '' })
     } catch (error) {
       toast.error(error.message)
     }
@@ -183,21 +215,76 @@ function POSContent() {
               </div>
 
               <div className="flex items-center gap-3 border-l border-slate-100 dark:border-slate-800 pl-4">
-                <button
-                  type="button"
-                  onClick={() => setShowTableSelector(true)}
-                  className={clsx(
-                    "px-4 py-2.5 border rounded-xl flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all min-w-[180px]",
-                    selectedTable
-                      ? "bg-slate-900 dark:bg-secondary text-white border-slate-900 dark:border-secondary"
-                      : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700"
-                  )}
-                >
-                  <MapPin size={16} strokeWidth={2.5} />
-                  <span className="truncate">
-                    {fullSelectedTable ? fullSelectedTable.name : 'Seleccionar Mesa'}
-                  </span>
-                </button>
+                <div className="flex items-center gap-1 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOrderTypeChange('dine_in')}
+                    className={clsx(
+                      "px-3 py-2 rounded-lg flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                      orderType === 'dine_in'
+                        ? "bg-slate-900 dark:bg-secondary text-white"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700"
+                    )}
+                  >
+                    <UtensilsCrossed size={14} strokeWidth={2.5} />
+                    Mesa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOrderTypeChange('takeaway')}
+                    className={clsx(
+                      "px-3 py-2 rounded-lg flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                      orderType === 'takeaway'
+                        ? "bg-slate-900 dark:bg-secondary text-white"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700"
+                    )}
+                  >
+                    <ShoppingBag size={14} strokeWidth={2.5} />
+                    Llevar
+                  </button>
+                </div>
+
+                {orderType === 'dine_in' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowTableSelector(true)}
+                    className={clsx(
+                      "px-4 py-2.5 border rounded-xl flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all min-w-[180px]",
+                      selectedTable
+                        ? "bg-slate-900 dark:bg-secondary text-white border-slate-900 dark:border-secondary"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700"
+                    )}
+                  >
+                    <MapPin size={16} strokeWidth={2.5} />
+                    <span className="truncate">
+                      {fullSelectedTable ? fullSelectedTable.name : 'Seleccionar Mesa'}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="text"
+                      placeholder="Nombre cliente"
+                      value={takeawayInfo.name}
+                      onChange={(e) => setTakeawayInfo(prev => ({ ...prev, name: e.target.value }))}
+                      className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl font-black text-xs uppercase tracking-widest min-w-[140px] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Teléfono"
+                      value={takeawayInfo.phone}
+                      onChange={(e) => setTakeawayInfo(prev => ({ ...prev, phone: e.target.value }))}
+                      className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl font-black text-xs uppercase tracking-widest min-w-[120px] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Nota (ej: para recoger en 20 min)"
+                      value={takeawayInfo.note}
+                      onChange={(e) => setTakeawayInfo(prev => ({ ...prev, note: e.target.value }))}
+                      className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl font-black text-xs uppercase tracking-widest min-w-[220px] flex-1 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                    />
+                  </div>
+                )}
 
                 <div className="relative">
                   <button
@@ -268,6 +355,8 @@ function POSContent() {
         loading={orderLoading}
         printingLoading={printingLoading}
         selectedTable={fullSelectedTable || selectedTable}
+        orderType={orderType}
+        customerInfo={orderType === 'takeaway' ? takeawayInfo : null}
         taxName={settings?.tax_name}
       />
       
@@ -278,7 +367,16 @@ function POSContent() {
         totals={totals}
         selectedTable={fullSelectedTable || selectedTable}
         taxName={settings?.tax_name}
-        onPrint={() => printPreCheck({ cart, totals, selectedTable: fullSelectedTable || selectedTable, taxName: settings?.tax_name })}
+        orderType={orderType}
+        customerInfo={orderType === 'takeaway' ? takeawayInfo : null}
+        onPrint={() => printPreCheck({
+          cart,
+          totals,
+          selectedTable: fullSelectedTable || selectedTable,
+          taxName: settings?.tax_name,
+          orderType,
+          customerInfo: orderType === 'takeaway' ? takeawayInfo : null
+        })}
       />
 
       <TableSelectorModal

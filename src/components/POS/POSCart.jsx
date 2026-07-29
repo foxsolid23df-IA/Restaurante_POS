@@ -19,6 +19,8 @@ export default function POSCart({
   loading,
   printingLoading,
   selectedTable, // Needed to disable checkout if no table selected
+  orderType = 'dine_in',
+  customerInfo = null,
   taxName = "IVA",
 }) {
   const { canCheckout } = useRolePermissions();
@@ -34,7 +36,13 @@ export default function POSCart({
             <div>
               <h2 className="text-xl font-black text-primary dark:text-white tracking-tight font-display uppercase leading-tight">Orden Actual</h2>
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">
-                {selectedTable ? `Mesa: ${selectedTable.name || selectedTable}` : 'Sin mesa asignada'}
+                {orderType === 'takeaway'
+                  ? customerInfo?.name
+                    ? `Para llevar: ${customerInfo.name}${customerInfo.phone ? ` (${customerInfo.phone})` : ''}`
+                    : 'Para llevar'
+                  : selectedTable
+                    ? `Mesa: ${selectedTable.name || selectedTable}`
+                    : 'Sin mesa asignada'}
               </p>
             </div>
           </div>
@@ -136,7 +144,7 @@ export default function POSCart({
 
           <button
             onClick={onCheckout}
-            disabled={isEmpty || !selectedTable || loading || printingLoading}
+            disabled={isEmpty || (orderType === 'dine_in' && !selectedTable) || loading || printingLoading}
             className="flex-1 bg-secondary text-white rounded-2xl hover:bg-blue-700 transition-all font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
           >
             {loading ? (

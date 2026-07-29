@@ -50,11 +50,14 @@ export function useComandaPrinter() {
         category: item.products?.categories?.name || 'Sin categoría'
       })) || []
 
+      const isTakeaway = order.order_type === 'takeaway'
+
       return {
         id: `CMD_${orderId.slice(-6)}_${Date.now()}`,
         order_id: orderId,
-        table_name: order.tables?.name || 'Sin mesa',
-        area_name: order.tables?.areas?.name || 'Sin área',
+        order_type: order.order_type || 'dine_in',
+        table_name: isTakeaway ? 'PARA LLEVAR' : (order.tables?.name || 'Sin mesa'),
+        area_name: isTakeaway ? 'PARA LLEVAR' : (order.tables?.areas?.name || 'Sin área'),
         items: comandaItems,
         customer_info: order.customer_info,
         notes: order.notes,
@@ -172,12 +175,15 @@ export function useComandaPrinter() {
       const taxRate = settings?.tax_rate ? parseFloat(settings.tax_rate) : 0.16
       const subtotal = order.total_amount / (1 + taxRate)
       const tax = order.total_amount - subtotal
+      const isTakeaway = order.order_type === 'takeaway'
 
       const ticketData = {
         business_name: settings?.name,
         order_id: orderId,
-        table_name: order.tables?.name,
+        order_type: order.order_type || 'dine_in',
+        table_name: isTakeaway ? null : order.tables?.name,
         waiter_name: order.user?.full_name,
+        customer_info: order.customer_info,
         subtotal,
         tax,
         tax_name: settings?.tax_name || 'IVA',
@@ -212,17 +218,22 @@ export function useComandaPrinter() {
   }, [printers])
 
   // Imprimir pre-cuenta desde carrito
-  const printPreCheck = useCallback(async ({ cart, totals, selectedTable, taxName }) => {
+  const printPreCheck = useCallback(async ({ cart, totals, selectedTable, taxName, orderType = 'dine_in', customerInfo = null }) => {
     setLoading(true)
     setError(null)
     try {
       const settings = useBusinessStore.getState().settings
-      const tableName = selectedTable?.name || selectedTable || 'Sin mesa'
+      const isTakeaway = orderType === 'takeaway'
+      const tableName = isTakeaway
+        ? (customerInfo?.name ? `PARA LLEVAR: ${customerInfo.name}` : 'PARA LLEVAR')
+        : (selectedTable?.name || selectedTable || 'Sin mesa')
       const preCheckData = {
         business_name: settings?.name,
         order_id: 'PRE-CUENTA',
+        order_type: orderType,
         table_name: tableName,
         waiter_name: '',
+        customer_info: customerInfo,
         subtotal: totals?.subtotal || 0,
         tax: totals?.tax || 0,
         tax_name: taxName || settings?.tax_name || 'IVA',

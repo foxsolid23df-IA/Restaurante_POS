@@ -1,4 +1,4 @@
-import { Eye, DollarSign, Printer, XCircle } from 'lucide-react'
+import { Eye, DollarSign, Printer, XCircle, ShoppingBag } from 'lucide-react'
 
 export default function ActiveOrderCard({ 
   order, 
@@ -24,9 +24,17 @@ export default function ActiveOrderCard({
       {/* Header */}
       <div className="bg-slate-900 p-4 text-white group-hover:bg-primary transition-colors duration-500">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xl font-bold">{order.tables?.name}</h3>
-          <span className="text-xs font-bold uppercase tracking-wider opacity-90 px-2 py-1 bg-white/10 rounded">
-            {order.tables?.areas?.name || 'Sin área'}
+          <h3 className="text-xl font-bold">
+            {order.order_type === 'takeaway' || !order.table_id
+              ? (order.customer_info?.name || 'Para llevar')
+              : order.tables?.name}
+          </h3>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-90 px-2 py-1 bg-white/10 rounded flex items-center gap-1.5">
+            {order.order_type === 'takeaway' || !order.table_id ? (
+              <><ShoppingBag size={12} /> Para llevar</>
+            ) : (
+              order.tables?.areas?.name || 'Sin área'
+            )}
           </span>
         </div>
         <p className="text-sm opacity-80 flex items-center gap-2">
@@ -42,6 +50,12 @@ export default function ActiveOrderCard({
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
             Mesero: <span className="text-slate-700">{order.profiles?.full_name}</span>
           </p>
+          {(order.order_type === 'takeaway' || !order.table_id) && order.customer_info && (
+            <div className="mb-3 text-xs text-slate-600">
+              {order.customer_info.phone && <p><span className="font-bold">Tel:</span> {order.customer_info.phone}</p>}
+              {order.customer_info.note && <p><span className="font-bold">Nota:</span> {order.customer_info.note}</p>}
+            </div>
+          )}
           
           <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
             {order.order_items?.map(item => (

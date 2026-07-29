@@ -158,6 +158,9 @@ export function initializeSchema(db) {
       branch_id TEXT,
       currency TEXT NOT NULL DEFAULT 'MXN',
       customer_language TEXT DEFAULT 'es',
+      order_type TEXT NOT NULL DEFAULT 'dine_in',
+      customer_info TEXT,
+      notes TEXT,
       _synced INTEGER DEFAULT 0,
       _local_id TEXT,
       FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL,
@@ -555,7 +558,10 @@ export function initializeSchema(db) {
     { table: 'profiles', column: 'pin_code_hash', type: 'TEXT' },
     { table: 'profiles', column: 'permissions', type: 'TEXT DEFAULT \'{}\'' },
     { table: 'profiles', column: 'preferred_language', type: 'TEXT DEFAULT \'es\'' },
-    { table: 'printers', column: 'is_default', type: 'INTEGER NOT NULL DEFAULT 0' }
+    { table: 'printers', column: 'is_default', type: 'INTEGER NOT NULL DEFAULT 0' },
+    { table: 'orders', column: 'order_type', type: 'TEXT NOT NULL DEFAULT \'dine_in\'' },
+    { table: 'orders', column: 'customer_info', type: 'TEXT' },
+    { table: 'orders', column: 'notes', type: 'TEXT' }
   ]
 
   for (const { table, column, type } of columnsToAdd) {

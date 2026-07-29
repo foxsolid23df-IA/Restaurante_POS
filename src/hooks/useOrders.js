@@ -100,17 +100,20 @@ export function useOrders() {
       const totalAmount = subtotal + tax
 
       // Crear la orden
+      const orderType = cartData.order_type || cart.order_type || 'dine_in'
+      const customerInfo = cartData.customer_info || cart.customer_info || null
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          table_id: cartData.table_id || cart.table_id,
+          table_id: orderType === 'dine_in' ? (cartData.table_id || cart.table_id) : null,
           user_id: userId,
           branch_id: currentBranch.id,
           total_amount: totalAmount,
           status: 'pending',
           payment_status: 'pending',
+          order_type: orderType,
           customer_id: cartData.customer_id || cart.customer_id || null,
-          customer_info: cartData.customer_info || cart.customerInfo || cart.customer_info,
+          customer_info: customerInfo,
           notes: cartData.notes,
           created_at: new Date().toISOString()
         })
@@ -135,9 +138,9 @@ export function useOrders() {
 
       if (itemsError) throw itemsError
 
-      // Marcar mesa como ocupada para evitar doble asignacion
+      // Marcar mesa como ocupada para evitar doble asignacion (solo dine_in)
       try {
-        if (order.table_id) {
+        if (order.order_type === 'dine_in' && order.table_id) {
           await salonApi.setTableStatus(order.table_id, 'occupied')
         }
       } catch (tableError) {

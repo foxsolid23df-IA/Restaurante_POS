@@ -32,7 +32,15 @@ export const ESC_POS = {
     }
     
     ticket += '\n' + ESC_POS.LEFT;
-    ticket += `MESA: ${data.table_name || 'N/A'}\n`;
+    if (data.order_type === 'takeaway') {
+      ticket += `TIPO: PARA LLEVAR\n`;
+      const info = data.customer_info || {};
+      if (info.name) ticket += `CLIENTE: ${info.name}\n`;
+      if (info.phone) ticket += `TELEFONO: ${info.phone}\n`;
+      if (info.note) ticket += `NOTA: ${info.note}\n`;
+    } else {
+      ticket += `MESA: ${data.table_name || 'N/A'}\n`;
+    }
     ticket += `FECHA: ${new Date().toLocaleString()}\n`;
     ticket += `FOLIO: #${data.order_id?.slice(-6) || '000000'}\n`;
     ticket += `MESERO: ${data.waiter_name || 'N/A'}\n`;

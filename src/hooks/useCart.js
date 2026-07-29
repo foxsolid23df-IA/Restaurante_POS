@@ -16,6 +16,7 @@ export const useCartStore = create(
         id: cartId,
         items: [],
         table_id: tableId,
+        order_type: 'dine_in',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -171,6 +172,23 @@ export const useCartStore = create(
       }))
     },
 
+    setOrderType: (cartId, orderType) => {
+      const { carts } = get()
+      const cart = carts[cartId]
+      if (!cart) return
+
+      set((state) => ({
+        carts: {
+          ...state.carts,
+          [cartId]: {
+            ...cart,
+            order_type: orderType,
+            updated_at: new Date().toISOString()
+          }
+        }
+      }))
+    },
+
     setCustomerInfo: (cartId, customerInfo) => {
       const { carts } = get()
       const cart = carts[cartId]
@@ -205,6 +223,7 @@ export const useCart = (cartId) => {
     clearCart,
     deleteCart,
     setTable,
+    setOrderType,
     setCustomerInfo
   } = useCartStore()
 
@@ -314,6 +333,7 @@ export const useCart = (cartId) => {
     clearCurrentCart,
     deleteCart,
     setTable,
+    setOrderType,
     setCustomerInfo,
     addItem: (item) => {
       if (currentCartId) addItem(currentCartId, item)
