@@ -98,6 +98,7 @@ export function initializeSchema(db) {
       name TEXT NOT NULL,
       menu_id TEXT,
       printer_id TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE SET NULL
     )
@@ -547,6 +548,8 @@ export function initializeSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
     CREATE INDEX IF NOT EXISTS idx_products_branch ON products(branch_id);
+    CREATE INDEX IF NOT EXISTS idx_categories_menu ON categories(menu_id);
+    CREATE INDEX IF NOT EXISTS idx_categories_sort ON categories(sort_order);
     CREATE INDEX IF NOT EXISTS idx_tables_branch ON tables(branch_id);
     CREATE INDEX IF NOT EXISTS idx_tables_area ON tables(area_id);
     CREATE INDEX IF NOT EXISTS idx_customers_branch ON customers(branch_id);
@@ -563,7 +566,8 @@ export function initializeSchema(db) {
     { table: 'printers', column: 'is_default', type: 'INTEGER NOT NULL DEFAULT 0' },
     { table: 'orders', column: 'order_type', type: 'TEXT NOT NULL DEFAULT \'dine_in\'' },
     { table: 'orders', column: 'customer_info', type: 'TEXT' },
-    { table: 'orders', column: 'notes', type: 'TEXT' }
+    { table: 'orders', column: 'notes', type: 'TEXT' },
+    { table: 'categories', column: 'sort_order', type: 'INTEGER NOT NULL DEFAULT 0' }
   ]
 
   for (const { table, column, type } of columnsToAdd) {

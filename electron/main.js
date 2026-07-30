@@ -360,9 +360,9 @@ function setupDatabaseHandlers() {
             .run(normalized.id, normalized.full_name, normalized.role, normalized.pin_code, normalized.pin_code_hash, normalized.is_active, normalized.email, normalized.permissions, normalized.branch_id, normalized.created_at, normalized.updated_at)
         }
         for (const category of data.categories || []) {
-          const c = withDefaults(category, { created_at: now })
-          db.prepare('INSERT OR REPLACE INTO categories (id, name, menu_id, printer_id, created_at) VALUES (?, ?, ?, ?, ?)')
-            .run(c.id, c.name, c.menu_id, c.printer_id, c.created_at)
+          const c = withDefaults(category, { sort_order: 0, created_at: now })
+          db.prepare('INSERT OR REPLACE INTO categories (id, name, menu_id, printer_id, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(c.id, c.name, c.menu_id, c.printer_id, c.sort_order, c.created_at)
         }
         for (const product of data.products || []) {
           const p = withDefaults(product, { is_active: 1, is_featured: 0, sort_order: 0, preparation_time: 0, created_at: now, updated_at: now })

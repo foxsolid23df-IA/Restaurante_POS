@@ -51,7 +51,7 @@ export async function seedDatabase(db) {
       'INSERT OR REPLACE INTO products (id, category_id, name, price, image_url, is_active, description, sku, branch_id, preparation_time, is_featured, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
     const insertCategory = db.prepare(
-      'INSERT OR REPLACE INTO categories (id, name, menu_id, printer_id, created_at) VALUES (?, ?, ?, ?, ?)'
+      'INSERT OR REPLACE INTO categories (id, name, menu_id, printer_id, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)'
     )
     const insertTable = db.prepare(
       'INSERT OR REPLACE INTO tables (id, area_id, name, capacity, status, branch_id, shape, x_pos, y_pos, rotation, sort_order, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -93,7 +93,7 @@ export async function seedDatabase(db) {
       for (const category of seedData.categories) {
         insertCategory.run(
           category.id, category.name, category.menu_id,
-          category.printer_id, category.created_at
+          category.printer_id, category.sort_order || 0, category.created_at
         )
       }
 
