@@ -240,8 +240,8 @@ export default function Products() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-slate-100 overflow-hidden flex items-center justify-center shrink-0">
-                          {product.image_url ? (
-                            <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                          {product.image_url || product.local_image_path ? (
+                            <img src={product.local_image_path ? `file://${product.local_image_path}` : product.image_url} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <ChefHat size={18} className="text-slate-400" />
                           )}

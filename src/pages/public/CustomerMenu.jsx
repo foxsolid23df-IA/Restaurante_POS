@@ -215,8 +215,8 @@ export default function CustomerMenu() {
               <div className="grid gap-3">
                 {catProducts.map(product => (
                   <div key={product.id} className="bg-white rounded-xl p-4 shadow-sm flex gap-4 items-center">
-                    {product.image_url && (
-                      <img src={product.image_url} alt={product.name} className="w-20 h-20 rounded-lg object-cover" />
+                    {(product.image_url || product.local_image_path) && (
+                      <img src={product.local_image_path ? `file://${product.local_image_path}` : product.image_url} alt={product.name} className="w-20 h-20 rounded-lg object-cover" />
                     )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold">{product.name}</h3>

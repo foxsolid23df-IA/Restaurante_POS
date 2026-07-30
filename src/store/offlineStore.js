@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { isElectron, db as localDb } from '@/lib/electronBridge'
+import { isElectron } from '@/lib/electronBridge'
+import { localDb } from '@/lib/localDb'
 
 const useOfflineStore = create(
   persist(

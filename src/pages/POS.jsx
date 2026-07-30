@@ -7,7 +7,7 @@ import { useOrders } from '@/hooks/useOrders'
 import { useTables } from '@/hooks/useTables'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useComandaPrinter } from '@/hooks/useComandaPrinter'
-import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search, MapPin, ShoppingBag, UtensilsCrossed } from 'lucide-react'
+import { Clock, TrendingUp, Users, UserCircle, ChevronDown, Check, Search, MapPin, ShoppingBag, UtensilsCrossed, ZoomIn, ZoomOut, RotateCcw, Menu, RefreshCw } from 'lucide-react'
 import InventoryAlerts from './components/InventoryAlerts'
 import CategoryFilter from '@/components/POS/CategoryFilter'
 import ProductGrid from '@/components/POS/ProductGrid'
@@ -23,7 +23,7 @@ function POSContent() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { profile } = useAuthStore()
   const { settings } = useBusinessStore()
-  const { categories, products } = usePOSData()
+  const { categories, products, menus, refetch } = usePOSData(selectedMenu)
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -52,7 +52,11 @@ function POSContent() {
   const [showPreCheck, setShowPreCheck] = useState(false)
   const [showTableSelector, setShowTableSelector] = useState(false)
   const [orderType, setOrderTypeState] = useState(cart?.order_type || 'dine_in')
-  const [takeawayInfo, setTakeawayInfo] = useState({ name: '', phone: '', note: '' })
+  const [takeawayInfo, setTakeawayInfo] = useState({ name: '', note: '' })
+  const [zoom, setZoom] = useState(1)
+  const [selectedMenu, setSelectedMenu] = useState('auto')
+  const [isSyncing, setIsSyncing] = useState(false)
+  const isElectron = typeof window !== 'undefined' && window.electronAPI?.window
 
   // Sincronizar tipo de orden y mesa desde el carrito
   useEffect(() => {
@@ -101,6 +105,48 @@ function POSContent() {
     }
   }, [categories, selectedCategory])
 
+  useEffect(() => {
+    if (isElectron) {
+      window.electronAPI.window.getZoom().then(setZoom).catch(() => setZoom(1))
+    }
+  }, [isElectron])
+
+  const handleZoomIn = async () => {
+    if (!isElectron) return
+    const next = await window.electronAPI.window.zoomIn()
+    setZoom(next)
+  }
+
+  const handleZoomOut = async () => {
+    if (!isElectron) return
+    const next = await window.electronAPI.window.zoomOut()
+    setZoom(next)
+  }
+
+  const handleZoomReset = async () => {
+    if (!isElectron) return
+    const next = await window.electronAPI.window.zoomReset()
+    setZoom(next)
+  }
+
+  const handleSyncNow = async () => {
+    if (!isElectron || isSyncing) return
+    setIsSyncing(true)
+    try {
+      const result = await window.electronAPI.sync.now()
+      if (result.success) {
+        toast.success('Sincronización completada')
+        refetch()
+      } else {
+        toast.error(result.error || 'Error al sincronizar')
+      }
+    } catch (error) {
+      toast.error('Error al sincronizar')
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   const handleAddToCart = (product) => {
     addToCart({
       product_id: product.id,
@@ -134,7 +180,6 @@ function POSContent() {
       const customerInfo = orderType === 'takeaway'
         ? {
             name: takeawayInfo.name?.trim() || null,
-            phone: takeawayInfo.phone?.trim() || null,
             note: takeawayInfo.note?.trim() || null
           }
         : null
@@ -158,7 +203,7 @@ function POSContent() {
       clearCurrentCart()
       setSelectedTable(null)
       setSelectedCustomer(null)
-      setTakeawayInfo({ name: '', phone: '', note: '' })
+      setTakeawayInfo({ name: '', note: '' })
     } catch (error) {
       toast.error(error.message)
     }
@@ -215,6 +260,34 @@ function POSContent() {
               </div>
 
               <div className="flex items-center gap-3 border-l border-slate-100 dark:border-slate-800 pl-4">
+                {isElectron && (
+                  <button
+                    type="button"
+                    onClick={handleSyncNow}
+                    disabled={isSyncing}
+                    className="px-3 py-2.5 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 transition-all font-black text-xs uppercase tracking-widest flex items-center gap-2"
+                    title="Sincronizar ahora"
+                  >
+                    <RefreshCw size={14} strokeWidth={2.5} className={isSyncing ? 'animate-spin' : ''} />
+                    Sync
+                  </button>
+                )}
+
+                <div className="relative">
+                  <select
+                    value={selectedMenu}
+                    onChange={(e) => { setSelectedMenu(e.target.value); setSelectedCategory('all') }}
+                    className="appearance-none pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl font-black text-xs uppercase tracking-widest min-w-[160px] dark:text-white focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                  >
+                    <option value="auto">Menú: Auto</option>
+                    {menus?.map((menu) => (
+                      <option key={menu.id} value={menu.id}>{menu.name}</option>
+                    ))}
+                  </select>
+                  <Menu size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" strokeWidth={2.5} />
+                  <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" strokeWidth={3} />
+                </div>
+
                 <div className="flex items-center gap-1 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
                   <button
                     type="button"
@@ -240,7 +313,7 @@ function POSContent() {
                     )}
                   >
                     <ShoppingBag size={14} strokeWidth={2.5} />
-                    Llevar
+                    Sin mesa
                   </button>
                 </div>
 
@@ -268,13 +341,6 @@ function POSContent() {
                       value={takeawayInfo.name}
                       onChange={(e) => setTakeawayInfo(prev => ({ ...prev, name: e.target.value }))}
                       className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl font-black text-xs uppercase tracking-widest min-w-[140px] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary/20"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Teléfono"
-                      value={takeawayInfo.phone}
-                      onChange={(e) => setTakeawayInfo(prev => ({ ...prev, phone: e.target.value }))}
-                      className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl font-black text-xs uppercase tracking-widest min-w-[120px] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary/20"
                     />
                     <input
                       type="text"
@@ -389,6 +455,37 @@ function POSContent() {
         title={selectedTable ? 'Cambiar mesa' : 'Seleccionar mesa'}
       />
       
+      {isElectron && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={zoom <= 0.5}
+            className="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Alejar"
+          >
+            <ZoomOut size={16} strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomReset}
+            className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors min-w-[52px]"
+            title="Restablecer zoom"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={zoom >= 2.0}
+            className="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Acercar"
+          >
+            <ZoomIn size={16} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+
       <InventoryAlerts />
     </div>
   )

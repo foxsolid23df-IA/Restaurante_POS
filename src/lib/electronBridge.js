@@ -190,6 +190,16 @@ export const logger = {
   }
 }
 
+// Sync operations
+export const sync = {
+  now: async () => {
+    if (isElectron) {
+      return window.electronAPI.sync.now()
+    }
+    return { success: false, error: 'Sync only available in Electron' }
+  }
+}
+
 // License operations
 export const license = {
   activate: async (email, password) => {
@@ -215,5 +225,6 @@ export default {
   updater,
   app,
   license,
-  logger
+  logger,
+  sync
 }

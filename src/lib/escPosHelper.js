@@ -33,10 +33,9 @@ export const ESC_POS = {
     
     ticket += '\n' + ESC_POS.LEFT;
     if (data.order_type === 'takeaway') {
-      ticket += `TIPO: PARA LLEVAR\n`;
+      ticket += `TIPO: PEDIDO SIN MESA\n`;
       const info = data.customer_info || {};
       if (info.name) ticket += `CLIENTE: ${info.name}\n`;
-      if (info.phone) ticket += `TELEFONO: ${info.phone}\n`;
       if (info.note) ticket += `NOTA: ${info.note}\n`;
     } else {
       ticket += `MESA: ${data.table_name || 'N/A'}\n`;

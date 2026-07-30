@@ -56,8 +56,8 @@ export function useComandaPrinter() {
         id: `CMD_${orderId.slice(-6)}_${Date.now()}`,
         order_id: orderId,
         order_type: order.order_type || 'dine_in',
-        table_name: isTakeaway ? 'PARA LLEVAR' : (order.tables?.name || 'Sin mesa'),
-        area_name: isTakeaway ? 'PARA LLEVAR' : (order.tables?.areas?.name || 'Sin área'),
+        table_name: isTakeaway ? 'PEDIDO SIN MESA' : (order.tables?.name || 'Sin mesa'),
+        area_name: isTakeaway ? 'PEDIDO SIN MESA' : (order.tables?.areas?.name || 'Sin área'),
         items: comandaItems,
         customer_info: order.customer_info,
         notes: order.notes,
@@ -225,7 +225,7 @@ export function useComandaPrinter() {
       const settings = useBusinessStore.getState().settings
       const isTakeaway = orderType === 'takeaway'
       const tableName = isTakeaway
-        ? (customerInfo?.name ? `PARA LLEVAR: ${customerInfo.name}` : 'PARA LLEVAR')
+        ? (customerInfo?.name ? `PEDIDO SIN MESA: ${customerInfo.name}` : 'PEDIDO SIN MESA')
         : (selectedTable?.name || selectedTable || 'Sin mesa')
       const preCheckData = {
         business_name: settings?.name,

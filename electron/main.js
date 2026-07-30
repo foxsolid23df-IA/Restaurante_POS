@@ -1,9 +1,10 @@
 import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
 import { join } from 'path'
-import { existsSync, writeFileSync, appendFileSync, mkdirSync } from 'fs'
+import { existsSync, writeFileSync, readFileSync, appendFileSync, mkdirSync } from 'fs'
 import { initDatabase } from './database/connection.js'
 import { setupPrinterHandlers } from './printer/printerService.js'
 import { setupUpdater } from './updater.js'
+import { manualSync, startAutoSync } from './database/sync.js'
 import { isActivated, needsRevalidation, isGraceExpired, isInGracePeriod, activateLicense, revalidateLicense, getLicenseInfo, getLicense } from './license/licenseManager.js'
 
 let mainWindow = null
@@ -46,6 +47,84 @@ console.log('app.isPackaged:', app.isPackaged)
 console.log('__dirname:', __dirname)
 console.log('process.resourcesPath:', process.resourcesPath)
 console.log('Log file:', logPath)
+
+// Zoom preferences
+const ZOOM_PREFS_FILE = join(logDir, 'user-preferences.json')
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 2.0
+const ZOOM_STEP = 0.2
+const DEFAULT_ZOOM = 1.0
+
+function readZoomPreferences() {
+  try {
+    if (existsSync(ZOOM_PREFS_FILE)) {
+      const data = JSON.parse(readFileSync(ZOOM_PREFS_FILE, 'utf8'))
+      return typeof data.zoomFactor === 'number' ? data.zoomFactor : DEFAULT_ZOOM
+    }
+  } catch (e) {
+    console.error('Error reading zoom preferences:', e)
+  }
+  return DEFAULT_ZOOM
+}
+
+function saveZoomPreferences(zoomFactor) {
+  try {
+    writeFileSync(ZOOM_PREFS_FILE, JSON.stringify({ zoomFactor }, null, 2))
+  } catch (e) {
+    console.error('Error saving zoom preferences:', e)
+  }
+}
+
+function clampZoom(zoomFactor) {
+  return Math.min(Math.max(zoomFactor, MIN_ZOOM), MAX_ZOOM)
+}
+
+function applyZoom(targetWindow, zoomFactor) {
+  if (!targetWindow || targetWindow.isDestroyed()) return null
+  const clamped = clampZoom(zoomFactor)
+  targetWindow.webContents.setZoomFactor(clamped)
+  return clamped
+}
+
+async function setZoom(zoomFactor) {
+  const clamped = clampZoom(zoomFactor)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.setZoomFactor(clamped)
+  }
+  saveZoomPreferences(clamped)
+  return clamped
+}
+
+async function zoomIn() {
+  const current = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getZoomFactor() : readZoomPreferences()
+  return setZoom(current + ZOOM_STEP)
+}
+
+async function zoomOut() {
+  const current = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getZoomFactor() : readZoomPreferences()
+  return setZoom(current - ZOOM_STEP)
+}
+
+async function zoomReset() {
+  return setZoom(DEFAULT_ZOOM)
+}
+
+function setupZoomHandlers() {
+  ipcMain.handle('window:getZoom', async () => readZoomPreferences())
+  ipcMain.handle('window:setZoom', async (event, zoomFactor) => setZoom(zoomFactor))
+  ipcMain.handle('window:zoomIn', zoomIn)
+  ipcMain.handle('window:zoomOut', zoomOut)
+  ipcMain.handle('window:zoomReset', zoomReset)
+}
+
+function setupSyncHandlers() {
+  ipcMain.handle('sync:now', async () => {
+    if (!db) {
+      return { success: false, error: 'Database not initialized' }
+    }
+    return manualSync(db)
+  })
+}
 
 function createActivationWindow() {
   if (activationWindow && !activationWindow.isDestroyed()) {
@@ -139,14 +218,32 @@ function createWindow() {
   })
 
   // DevTools shortcuts: Ctrl+Shift+I or F12
+  // Zoom shortcuts: Ctrl++ / Ctrl+- / Ctrl+0
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if ((input.control && input.shift && input.key.toLowerCase() === 'i') || input.key === 'F12') {
       mainWindow.webContents.toggleDevTools()
+      return
+    }
+
+    if (input.control) {
+      const key = input.key.toLowerCase()
+      if (key === '+' || key === '=') {
+        event.preventDefault()
+        zoomIn()
+      } else if (key === '-') {
+        event.preventDefault()
+        zoomOut()
+      } else if (key === '0') {
+        event.preventDefault()
+        zoomReset()
+      }
     }
   })
 
   mainWindow.webContents.once('did-finish-load', () => {
     console.log('Window loaded, setting up window-dependent handlers...')
+    const savedZoom = readZoomPreferences()
+    applyZoom(mainWindow, savedZoom)
     setupPrinterHandlers(mainWindow, db)
     setupUpdater(mainWindow)
   })
@@ -394,6 +491,11 @@ app.whenReady().then(async () => {
 
   setupLicenseHandlers()
   setupDatabaseHandlers()
+  setupZoomHandlers()
+  setupSyncHandlers()
+  if (db) {
+    startAutoSync(db)
+  }
 
   const activated = isActivated()
   if (!activated) {

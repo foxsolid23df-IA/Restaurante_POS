@@ -1,4 +1,5 @@
 import { isElectron, electronAPI } from './electronBridge'
+import { isMenuActiveNow, normalizeActiveDays } from '@/features/catalog/api/catalogApi'
 
 // Local Database API for Electron mode
 // Provides the same interface as Supabase but uses SQLite locally
@@ -217,7 +218,7 @@ class LocalDb {
   }
 
   // Get products
-  async getProducts(branchId, categoryId = null) {
+  async getProducts(branchId, categoryId = null, menuId = null) {
     if (!this.canUseLocal()) {
       throw new Error('Local database not available')
     }
@@ -225,42 +226,129 @@ class LocalDb {
     let sql = `
       SELECT
         p.*,
-        c.name as category_name
+        c.name as category_name,
+        c.menu_id,
+        m.start_time as menu_start_time,
+        m.end_time as menu_end_time,
+        m.active_days as menu_active_days,
+        m.is_active as menu_is_active
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      WHERE p.is_active = 1 AND p.branch_id = ?
+      LEFT JOIN menus m ON c.menu_id = m.id
+      WHERE p.is_active = 1
     `
-    const params = [branchId]
+    const params = []
+
+    if (branchId) {
+      sql += ' AND p.branch_id = ?'
+      params.push(branchId)
+    }
 
     if (categoryId) {
       sql += ' AND p.category_id = ?'
       params.push(categoryId)
     }
 
+    if (menuId && menuId !== 'auto') {
+      sql += ' AND c.menu_id = ?'
+      params.push(menuId)
+    }
+
     sql += ' ORDER BY p.sort_order, p.name'
 
-    return electronAPI.db.query(sql, params)
+    const products = await electronAPI.db.query(sql, params)
+
+    // Apply menu schedule filter when in auto mode
+    return products.filter((product) => {
+      if (menuId && menuId !== 'auto') return true
+      const menu = product.menu_id
+        ? {
+            id: product.menu_id,
+            start_time: product.menu_start_time,
+            end_time: product.menu_end_time,
+            active_days: normalizeActiveDays(product.menu_active_days),
+            is_active: product.menu_is_active !== 0
+          }
+        : null
+      return isMenuActiveNow(menu)
+    })
   }
 
   // Get categories
-  async getCategories(branchId) {
+  async getCategories(branchId, menuId = null) {
     if (!this.canUseLocal()) {
       throw new Error('Local database not available')
     }
 
-    return electronAPI.db.query(
-      `
+    let sql = `
       SELECT
         c.*,
+        m.id as menu_id,
         m.name as menu_name,
+        m.start_time as menu_start_time,
+        m.end_time as menu_end_time,
+        m.active_days as menu_active_days,
+        m.is_active as menu_is_active,
+        m.branch_id as menu_branch_id,
         pr.name as printer_name
       FROM categories c
       LEFT JOIN menus m ON c.menu_id = m.id
       LEFT JOIN printers pr ON c.printer_id = pr.id
-      ORDER BY c.name
-    `,
-      [branchId]
-    )
+      WHERE 1=1
+    `
+    const params = []
+
+    if (branchId) {
+      sql += ' AND (m.branch_id = ? OR m.branch_id IS NULL)'
+      params.push(branchId)
+    }
+
+    if (menuId && menuId !== 'auto') {
+      sql += ' AND c.menu_id = ?'
+      params.push(menuId)
+    }
+
+    sql += ' ORDER BY c.sort_order, c.name'
+
+    const categories = await electronAPI.db.query(sql, params)
+
+    // Apply menu schedule filter when in auto mode
+    return categories.filter((category) => {
+      if (menuId && menuId !== 'auto') return true
+      const menu = category.menu_id
+        ? {
+            id: category.menu_id,
+            start_time: category.menu_start_time,
+            end_time: category.menu_end_time,
+            active_days: normalizeActiveDays(category.menu_active_days),
+            is_active: category.menu_is_active !== 0
+          }
+        : null
+      return isMenuActiveNow(menu)
+    })
+  }
+
+  // Get menus
+  async getMenus(branchId) {
+    if (!this.canUseLocal()) {
+      throw new Error('Local database not available')
+    }
+
+    let sql = 'SELECT * FROM menus WHERE 1=1'
+    const params = []
+
+    if (branchId) {
+      sql += ' AND (branch_id = ? OR branch_id IS NULL)'
+      params.push(branchId)
+    }
+
+    sql += ' ORDER BY name'
+
+    const menus = await electronAPI.db.query(sql, params)
+    return menus.map((menu) => ({
+      ...menu,
+      active_days: normalizeActiveDays(menu.active_days)
+    }))
   }
 
   // Get tables
@@ -365,7 +453,11 @@ class LocalDb {
       throw new Error('Local database not available')
     }
 
-    return electronAPI.db.sync()
+    if (!electronAPI.sync?.now) {
+      throw new Error('Sync API not available')
+    }
+
+    return electronAPI.sync.now()
   }
 }
 

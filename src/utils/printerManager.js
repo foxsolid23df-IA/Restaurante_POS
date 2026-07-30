@@ -73,13 +73,16 @@ export class PrinterManager {
     output += this.generateDivider()
     
     // Información de la orden
-    output += this.formatText(`Mesa: ${comanda.table_name}`, { bold: true })
-    output += this.formatText(`Área: ${comanda.area_name}`)
+    output += this.formatText(`Mesa: ${comanda.table_name || 'PEDIDO SIN MESA'}`, { bold: true })
+    output += this.formatText(`Área: ${comanda.area_name || 'N/A'}`)
     output += this.formatText(`Hora: ${new Date(comanda.created_at).toLocaleTimeString()}`)
     output += this.formatText(`Orden: #${comanda.order_id}`)
     
     if (comanda.customer_info?.name) {
       output += this.formatText(`Cliente: ${comanda.customer_info.name}`)
+    }
+    if (comanda.customer_info?.note) {
+      output += this.formatText(`Nota: ${comanda.customer_info.note}`)
     }
     
     output += this.generateDivider()

@@ -48,10 +48,24 @@ const loggerAPI = {
   write: (level, message) => ipcRenderer.invoke('logger:write', level, message)
 }
 
+// Sync API
+const syncAPI = {
+  now: () => ipcRenderer.invoke('sync:now')
+}
+
 // License API
 const licenseAPI = {
   activate: (email, password) => ipcRenderer.invoke('license:activate', { email, password }),
   status: () => ipcRenderer.invoke('license:status')
+}
+
+// Window API (zoom controls)
+const windowAPI = {
+  getZoom: () => ipcRenderer.invoke('window:getZoom'),
+  setZoom: (zoomFactor) => ipcRenderer.invoke('window:setZoom', zoomFactor),
+  zoomIn: () => ipcRenderer.invoke('window:zoomIn'),
+  zoomOut: () => ipcRenderer.invoke('window:zoomOut'),
+  zoomReset: () => ipcRenderer.invoke('window:zoomReset')
 }
 
 // Expose APIs to renderer process
@@ -61,5 +75,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updater: updaterAPI,
   app: appAPI,
   license: licenseAPI,
-  logger: loggerAPI
+  logger: loggerAPI,
+  window: windowAPI,
+  sync: syncAPI
 })

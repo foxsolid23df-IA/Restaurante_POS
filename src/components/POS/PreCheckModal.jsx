@@ -6,7 +6,7 @@ export default function PreCheckModal({ isOpen, onClose, cart, totals, selectedT
 
   const isTakeaway = orderType === 'takeaway'
   const tableName = isTakeaway
-    ? (customerInfo?.name ? `Para llevar: ${customerInfo.name}` : 'Para llevar')
+    ? (customerInfo?.name ? `PEDIDO SIN MESA: ${customerInfo.name}` : 'PEDIDO SIN MESA')
     : (selectedTable?.name || selectedTable || 'Sin mesa')
   const date = new Date().toLocaleString('es-MX', {
     dateStyle: 'short',
@@ -41,12 +41,6 @@ export default function PreCheckModal({ isOpen, onClose, cart, totals, selectedT
             <span>{isTakeaway ? 'Tipo' : 'Mesa'}</span>
             <span className="text-primary dark:text-white">{tableName}</span>
           </div>
-          {isTakeaway && customerInfo?.phone && (
-            <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-slate-400">
-              <span>Teléfono</span>
-              <span className="text-primary dark:text-white">{customerInfo.phone}</span>
-            </div>
-          )}
           {isTakeaway && customerInfo?.note && (
             <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-slate-400">
               <span>Nota</span>

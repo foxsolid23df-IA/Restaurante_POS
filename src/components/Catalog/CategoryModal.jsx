@@ -5,11 +5,11 @@ import { usePrinters } from '@/hooks/usePrinters'
 import { useMenus } from '@/hooks/useMenus'
 import { catalogApi } from '@/features/catalog/api/catalogApi'
 
-export default function CategoryModal({ category, onClose, onSave }) {
+export default function CategoryModal({ category, defaultMenuId, onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: '',
     printer_id: '',
-    menu_id: ''
+    menu_id: defaultMenuId || ''
   })
   const [printersList, setPrintersList] = useState([])
   const [menusList, setMenusList] = useState([])
@@ -23,11 +23,17 @@ export default function CategoryModal({ category, onClose, onSave }) {
       setFormData({
         name: category.name || '',
         printer_id: category.printer_id || '',
-        menu_id: category.menu_id || ''
+        menu_id: category.menu_id || defaultMenuId || ''
+      })
+    } else {
+      setFormData({
+        name: '',
+        printer_id: '',
+        menu_id: defaultMenuId || ''
       })
     }
     loadInitialData()
-  }, [category])
+  }, [category, defaultMenuId])
 
   const loadInitialData = async () => {
     setFetchingData(true)

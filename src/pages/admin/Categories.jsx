@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  ArrowRight,
+  ChevronRight,
   Clock,
   Edit2,
   Layers,
@@ -10,7 +12,8 @@ import {
   Printer,
   RefreshCw,
   Settings,
-  Trash2
+  Trash2,
+  UtensilsCrossed
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import AreaConfig from '@/components/Admin/AreaConfig'
@@ -22,9 +25,12 @@ import { catalogApi, formatMenuDays, isMenuActiveNow } from '@/features/catalog/
 export default function Categories() {
   const [categories, setCategories] = useState([])
   const [menus, setMenus] = useState([])
+  const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('categories')
-  const [showModal, setShowModal] = useState(false)
+  const [step, setStep] = useState('menus')
+  const [selectedMenu, setSelectedMenu] = useState(null)
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showMenuModal, setShowMenuModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [editingMenu, setEditingMenu] = useState(null)
@@ -39,12 +45,14 @@ export default function Categories() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [cats, menusRes] = await Promise.all([
+      const [cats, menusRes, prods] = await Promise.all([
         catalogApi.getCategories(),
-        fetchMenus()
+        fetchMenus(),
+        catalogApi.getProducts()
       ])
       setCategories(cats)
       setMenus(menusRes)
+      setProducts(prods)
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error al cargar catalogos')
@@ -53,13 +61,23 @@ export default function Categories() {
     }
   }
 
-  const categoryCounts = useMemo(() => {
+  const categoriesByMenu = useMemo(() => {
     return categories.reduce((acc, category) => {
       const key = category.menu_id || 'always'
-      acc[key] = (acc[key] || 0) + 1
+      if (!acc[key]) acc[key] = []
+      acc[key].push(category)
       return acc
     }, {})
   }, [categories])
+
+  const productsByCategory = useMemo(() => {
+    return products.reduce((acc, product) => {
+      const key = product.category_id || 'uncategorized'
+      if (!acc[key]) acc[key] = []
+      acc[key].push(product)
+      return acc
+    }, {})
+  }, [products])
 
   const handleDeleteCategory = async (category) => {
     try {
@@ -89,6 +107,8 @@ export default function Categories() {
         return
       }
       toast.success('Menu eliminado')
+      setSelectedMenu(null)
+      setStep('menus')
       loadData()
     } catch (error) {
       console.error('Error deleting menu:', error)
@@ -113,6 +133,42 @@ export default function Categories() {
     }
   }
 
+  const handleSelectMenu = (menu) => {
+    setSelectedMenu(menu)
+    setStep('categories')
+  }
+
+  const handleSelectCategory = (category) => {
+    setSelectedCategory(category)
+    setStep('products')
+  }
+
+  const handleBackToMenus = () => {
+    setSelectedMenu(null)
+    setSelectedCategory(null)
+    setStep('menus')
+  }
+
+  const handleBackToCategories = () => {
+    setSelectedCategory(null)
+    setStep('categories')
+  }
+
+  const openNewMenu = () => {
+    setEditingMenu(null)
+    setShowMenuModal(true)
+  }
+
+  const openNewCategory = () => {
+    setEditingCategory(null)
+    setShowCategoryModal(true)
+  }
+
+  const openEditCategory = (category) => {
+    setEditingCategory(category)
+    setShowCategoryModal(true)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
@@ -130,8 +186,10 @@ export default function Categories() {
             Volver a productos
           </Link>
           <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">Estructura operativa</p>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Categorias y menus</h1>
-          <p className="text-slate-500 font-medium text-sm">Horarios de venta, categorias e impresoras de produccion.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Menus, categorias y productos</h1>
+          <p className="text-slate-500 font-medium text-sm">
+            Crea menus, asigna categorias y organiza los productos por jerarquia.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -149,115 +207,84 @@ export default function Categories() {
             <Settings size={16} />
             Zonas
           </button>
-          <button
-            onClick={() => {
-              if (activeTab === 'categories') {
-                setEditingCategory(null)
-                setShowModal(true)
-              } else {
-                setEditingMenu(null)
-                setShowMenuModal(true)
-              }
-            }}
-            className="inline-flex items-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-emerald-700 font-black text-xs uppercase tracking-widest"
-          >
-            <Plus size={16} />
-            {activeTab === 'categories' ? 'Nueva categoria' : 'Nuevo menu'}
-          </button>
+          {step === 'menus' && (
+            <button
+              onClick={openNewMenu}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-emerald-700 font-black text-xs uppercase tracking-widest"
+            >
+              <Plus size={16} />
+              Nuevo menu
+            </button>
+          )}
+          {step === 'categories' && (
+            <button
+              onClick={openNewCategory}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-emerald-700 font-black text-xs uppercase tracking-widest"
+            >
+              <Plus size={16} />
+              Nueva categoria
+            </button>
+          )}
+          {step === 'products' && (
+            <Link
+              to="/admin/catalog"
+              className="inline-flex items-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-emerald-700 font-black text-xs uppercase tracking-widest"
+            >
+              <Plus size={16} />
+              Nuevo producto
+            </Link>
+          )}
         </div>
       </header>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 inline-flex gap-1 mb-5">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-sm font-bold text-slate-500 mb-6">
         <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest ${activeTab === 'categories' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+          onClick={handleBackToMenus}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-colors ${step === 'menus' ? 'bg-slate-900 text-white' : 'hover:bg-white'}`}
         >
-          Categorias
+          <Clock size={14} />
+          Menus
         </button>
-        <button
-          onClick={() => setActiveTab('menus')}
-          className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest ${activeTab === 'menus' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-        >
-          Menus por horario
-        </button>
-      </div>
+        {step !== 'menus' && <ChevronRight size={16} className="text-slate-300" />}
+        {step !== 'menus' && (
+          <button
+            onClick={handleBackToCategories}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition-colors ${step === 'categories' ? 'bg-slate-900 text-white' : 'hover:bg-white'}`}
+          >
+            <Layers size={14} />
+            {selectedMenu?.name || 'Categorias'}
+          </button>
+        )}
+        {step === 'products' && <ChevronRight size={16} className="text-slate-300" />}
+        {step === 'products' && (
+          <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 text-white">
+            <UtensilsCrossed size={14} />
+            {selectedCategory?.name || 'Productos'}
+          </span>
+        )}
+      </nav>
 
-      {activeTab === 'categories' ? (
-        categories.length === 0 ? (
-          <EmptyState
-            icon={<Layers size={36} />}
-            title="Sin categorias"
-            copy="Crea categorias para organizar productos y dirigir comandas."
-            action="Crear categoria"
-            onAction={() => setShowModal(true)}
-          />
-        ) : (
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200 text-left text-[11px] uppercase tracking-widest text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3 font-black">Categoria</th>
-                    <th className="px-4 py-3 font-black">Horario POS</th>
-                    <th className="px-4 py-3 font-black">Produccion</th>
-                    <th className="px-4 py-3 font-black text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {categories.map((category) => (
-                    <tr key={category.id} className="hover:bg-slate-50/70">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-primary">
-                            <Layers size={18} />
-                          </div>
-                          <p className="font-black text-slate-900">{category.name}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-slate-800">{category.menus?.name || 'Siempre disponible'}</p>
-                        <p className="text-xs text-slate-500">
-                          {category.menus
-                            ? `${category.menus.start_time?.slice(0, 5) || '--'} - ${category.menus.end_time?.slice(0, 5) || '--'}`
-                            : 'Sin restriccion de horario'}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-slate-800">{category.printers?.name || 'Sin impresora'}</p>
-                        <p className="text-xs text-slate-500">Zona de preparacion</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <IconButton title="Editar categoria" onClick={() => { setEditingCategory(category); setShowModal(true) }}>
-                            <Edit2 size={16} />
-                          </IconButton>
-                          <IconButton title="Eliminar categoria" tone="rose" onClick={() => handleDeleteCategory(category)}>
-                            <Trash2 size={16} />
-                          </IconButton>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )
-      ) : (
+      {step === 'menus' && (
         menus.length === 0 ? (
           <EmptyState
             icon={<Clock size={36} />}
-            title="Sin menus por horario"
-            copy="Define horarios como desayunos, comida o bar nocturno para controlar categorias en POS."
+            title="Sin menus"
+            copy="Crea menus como Desayuno, Comida o Bar para organizar las categorias del POS."
             action="Crear menu"
-            onAction={() => setShowMenuModal(true)}
+            onAction={openNewMenu}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {menus.map((menu) => {
               const activeNow = isMenuActiveNow(menu)
+              const count = categoriesByMenu[menu.id]?.length || 0
               return (
-                <div key={menu.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div
+                  key={menu.id}
+                  onClick={() => handleSelectMenu(menu)}
+                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
@@ -266,9 +293,9 @@ export default function Categories() {
                           {activeNow ? 'Activo ahora' : 'Fuera de horario'}
                         </p>
                       </div>
-                      <h3 className="text-xl font-black text-slate-900">{menu.name}</h3>
+                      <h3 className="text-xl font-black text-slate-900 group-hover:text-primary transition-colors">{menu.name}</h3>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <IconButton title="Editar menu" onClick={() => { setEditingMenu(menu); setShowMenuModal(true) }}>
                         <Edit2 size={16} />
                       </IconButton>
@@ -280,18 +307,165 @@ export default function Categories() {
 
                   <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                     <Info icon={<Clock size={16} />} label="Horario" value={`${menu.start_time?.slice(0, 5) || '--'} - ${menu.end_time?.slice(0, 5) || '--'}`} />
-                    <Info icon={<Layers size={16} />} label="Categorias" value={categoryCounts[menu.id] || 0} />
+                    <Info icon={<Layers size={16} />} label="Categorias" value={count} />
                   </div>
 
                   <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-3">
                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Dias</p>
                     <p className="font-bold text-slate-800">{formatMenuDays(menu.active_days)}</p>
                   </div>
+
+                  <div className="mt-4 flex items-center justify-between text-primary font-black text-xs uppercase tracking-widest">
+                    <span>Ver categorias</span>
+                    <ArrowRight size={16} />
+                  </div>
                 </div>
               )
             })}
           </div>
         )
+      )}
+
+      {step === 'categories' && (
+        <div>
+          <button
+            onClick={handleBackToMenus}
+            className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"
+          >
+            <ArrowLeft size={16} />
+            Regresar a menus
+          </button>
+
+          {(categoriesByMenu[selectedMenu?.id] || []).length === 0 ? (
+            <EmptyState
+              icon={<Layers size={36} />}
+              title="Sin categorias"
+              copy={`Crea categorias dentro del menu "${selectedMenu?.name}" para organizar productos.`}
+              action="Crear categoria"
+              onAction={openNewCategory}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {(categoriesByMenu[selectedMenu.id] || []).map((category) => {
+                const count = productsByCategory[category.id]?.length || 0
+                return (
+                  <div
+                    key={category.id}
+                    onClick={() => handleSelectCategory(category)}
+                    className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-primary">
+                          <Layers size={22} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-black text-slate-900 group-hover:text-primary transition-colors">{category.name}</h3>
+                          <p className="text-xs font-bold text-slate-500">{category.printers?.name || 'Sin impresora'}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <IconButton title="Editar categoria" onClick={() => openEditCategory(category)}>
+                          <Edit2 size={16} />
+                        </IconButton>
+                        <IconButton title="Eliminar categoria" tone="rose" onClick={() => handleDeleteCategory(category)}>
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-xl bg-slate-50 border border-slate-100 p-3">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Productos</p>
+                      <p className="font-bold text-slate-800">{count}</p>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between text-primary font-black text-xs uppercase tracking-widest">
+                      <span>Ver productos</span>
+                      <ArrowRight size={16} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {step === 'products' && (
+        <div>
+          <button
+            onClick={handleBackToCategories}
+            className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900"
+          >
+            <ArrowLeft size={16} />
+            Regresar a categorias
+          </button>
+
+          {(productsByCategory[selectedCategory?.id] || []).length === 0 ? (
+            <EmptyState
+              icon={<UtensilsCrossed size={36} />}
+              title="Sin productos"
+              copy={`Crea productos dentro de la categoria "${selectedCategory?.name}".`}
+              action="Nuevo producto"
+              onAction={() => window.location.href = '/admin/catalog'}
+            />
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-left text-[11px] uppercase tracking-widest text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-black">Producto</th>
+                      <th className="px-4 py-3 font-black">Precio</th>
+                      <th className="px-4 py-3 font-black">Estado</th>
+                      <th className="px-4 py-3 font-black text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(productsByCategory[selectedCategory.id] || []).map((product) => (
+                      <tr key={product.id} className="hover:bg-slate-50/70">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center">
+                              {product.image_url ? (
+                                <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <UtensilsCrossed size={16} className="text-slate-400" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-black text-slate-900">{product.name}</p>
+                              {product.description && <p className="text-xs text-slate-500 truncate max-w-xs">{product.description}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-slate-800">
+                          ${Number(product.price || 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${product.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                            {product.is_active ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              to={`/admin/catalog?edit=${product.id}`}
+                              className="p-2 rounded-lg border bg-white text-slate-600 hover:bg-slate-100 border-slate-200 transition-colors"
+                              title="Editar producto"
+                            >
+                              <Edit2 size={16} />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {showAreaConfig && (
@@ -322,11 +496,12 @@ export default function Categories() {
         </div>
       )}
 
-      {showModal && (
+      {showCategoryModal && (
         <CategoryModal
           category={editingCategory}
-          onClose={() => { setShowModal(false); setEditingCategory(null) }}
-          onSave={() => { loadData(); setShowModal(false); setEditingCategory(null) }}
+          defaultMenuId={selectedMenu?.id}
+          onClose={() => { setShowCategoryModal(false); setEditingCategory(null) }}
+          onSave={() => { loadData(); setShowCategoryModal(false); setEditingCategory(null) }}
         />
       )}
 

@@ -26,12 +26,12 @@ export default function ActiveOrderCard({
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xl font-bold">
             {order.order_type === 'takeaway' || !order.table_id
-              ? (order.customer_info?.name || 'Para llevar')
+              ? (order.customer_info?.name || 'PEDIDO SIN MESA')
               : order.tables?.name}
           </h3>
           <span className="text-xs font-bold uppercase tracking-wider opacity-90 px-2 py-1 bg-white/10 rounded flex items-center gap-1.5">
             {order.order_type === 'takeaway' || !order.table_id ? (
-              <><ShoppingBag size={12} /> Para llevar</>
+              <><ShoppingBag size={12} /> PEDIDO SIN MESA</>
             ) : (
               order.tables?.areas?.name || 'Sin área'
             )}
@@ -52,7 +52,6 @@ export default function ActiveOrderCard({
           </p>
           {(order.order_type === 'takeaway' || !order.table_id) && order.customer_info && (
             <div className="mb-3 text-xs text-slate-600">
-              {order.customer_info.phone && <p><span className="font-bold">Tel:</span> {order.customer_info.phone}</p>}
               {order.customer_info.note && <p><span className="font-bold">Nota:</span> {order.customer_info.note}</p>}
             </div>
           )}

@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import { net } from 'electron'
+import { app, net } from 'electron'
+import { join } from 'path'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabase.config.js'
 
 let supabase = null
@@ -89,6 +91,53 @@ async function processSyncQueue(db) {
   }
 }
 
+async function downloadProductImages(db) {
+  try {
+    const products = db.prepare(
+      "SELECT id, image_url, local_image_path FROM products WHERE is_active = 1 AND image_url IS NOT NULL AND image_url != ''"
+    ).all()
+
+    if (products.length === 0) return
+
+    const imagesDir = join(app.getPath('userData'), 'images', 'products')
+    if (!existsSync(imagesDir)) {
+      mkdirSync(imagesDir, { recursive: true })
+    }
+
+    const updateStmt = db.prepare('UPDATE products SET local_image_path = ? WHERE id = ?')
+    let downloaded = 0
+
+    for (const product of products) {
+      try {
+        const ext = product.image_url.split('?')[0].split('.').pop() || 'jpg'
+        const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext.toLowerCase()) ? ext : 'jpg'
+        const localPath = join(imagesDir, `${product.id}.${safeExt}`)
+
+        if (existsSync(localPath) && product.local_image_path === localPath) {
+          continue
+        }
+
+        const response = await fetch(product.image_url)
+        if (!response.ok) {
+          console.warn(`Failed to download image for product ${product.id}: ${response.status}`)
+          continue
+        }
+
+        const buffer = Buffer.from(await response.arrayBuffer())
+        writeFileSync(localPath, buffer)
+        updateStmt.run(localPath, product.id)
+        downloaded++
+      } catch (imageError) {
+        console.warn(`Error downloading image for product ${product.id}:`, imageError.message)
+      }
+    }
+
+    console.log(`Downloaded ${downloaded} product images`)
+  } catch (error) {
+    console.error('Error in downloadProductImages:', error)
+  }
+}
+
 // Pull remote changes (from Supabase to local SQLite)
 async function pullRemoteChanges(db, lastSyncTime) {
   try {
@@ -104,7 +153,8 @@ async function pullRemoteChanges(db, lastSyncTime) {
       'reservations',
       'loyalty_transactions',
       'products',
-      'categories'
+      'categories',
+      'menus'
     ]
 
     for (const tableName of tablesToSync) {
@@ -172,14 +222,14 @@ export function startAutoSync(db, intervalMs = 30000) {
   // Initial sync check
   if (net.isOnline()) {
     processSyncQueue(db)
-    pullRemoteChanges(db, getLastSyncTime(db))
+    pullRemoteChanges(db, getLastSyncTime(db)).then(() => downloadProductImages(db))
   }
 
   // Set up interval
   syncInterval = setInterval(() => {
     if (net.isOnline()) {
       processSyncQueue(db)
-      pullRemoteChanges(db, getLastSyncTime(db))
+      pullRemoteChanges(db, getLastSyncTime(db)).then(() => downloadProductImages(db))
     }
   }, intervalMs)
 
@@ -204,6 +254,7 @@ export async function manualSync(db) {
   try {
     await processSyncQueue(db)
     await pullRemoteChanges(db, getLastSyncTime(db))
+    await downloadProductImages(db)
     return { success: true }
   } catch (error) {
     return { success: false, error: error.message }

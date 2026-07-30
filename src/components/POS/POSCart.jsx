@@ -38,8 +38,8 @@ export default function POSCart({
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">
                 {orderType === 'takeaway'
                   ? customerInfo?.name
-                    ? `Para llevar: ${customerInfo.name}${customerInfo.phone ? ` (${customerInfo.phone})` : ''}`
-                    : 'Para llevar'
+                    ? `PEDIDO SIN MESA: ${customerInfo.name}`
+                    : 'PEDIDO SIN MESA'
                   : selectedTable
                     ? `Mesa: ${selectedTable.name || selectedTable}`
                     : 'Sin mesa asignada'}

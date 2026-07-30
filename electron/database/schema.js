@@ -119,6 +119,8 @@ export function initializeSchema(db) {
       preparation_time INTEGER DEFAULT 0,
       is_featured INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      image_url TEXT,
+      local_image_path TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,

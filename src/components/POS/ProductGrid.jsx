@@ -25,8 +25,8 @@ export default function ProductGrid({ products, onAddToCart }) {
             className="premium-card dark:bg-slate-800 dark:border-slate-700 p-4 group flex flex-col h-full bg-white opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards"
           >
             <div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-2xl mb-5 overflow-hidden flex items-center justify-center relative shadow-inner group-hover:shadow-none transition-all">
-              {product.image_url ? (
-                <img src={product.image_url} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+              {product.image_url || product.local_image_path ? (
+                <img src={product.local_image_path ? `file://${product.local_image_path}` : product.image_url} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
               ) : (
                 <div className="text-slate-200 dark:text-slate-600">
                   <Plus size={52} strokeWidth={1} />

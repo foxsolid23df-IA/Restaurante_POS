@@ -33,30 +33,32 @@ export default function OfflineStatusBar() {
           isOnline ? (pendingChanges > 0 ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-red-500'
         }`} />
         {isOnline ? (
-          pendingChanges > 0 ? (
-            <>
-              {pendingChanges} cambio{pendingChanges !== 1 ? 's' : ''} pendiente{pendingChanges !== 1 ? 's' : ''} de sincronizar
-              {isSyncing ? (
-                <span className="animate-pulse"> - sincronizando...</span>
-              ) : (
-                <button
-                  onClick={(e) => { e.stopPropagation(); triggerSync() }}
-                  className="underline hover:text-amber-800 ml-0.5"
-                >
-                  sincronizar
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              En linea
-              {lastSyncAt && (
-                <span className="text-emerald-500/70 ml-1">
-                  (sync: {new Date(lastSyncAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })})
-                </span>
-              )}
-            </>
-          )
+          <>
+            {pendingChanges > 0 ? (
+              <>
+                {pendingChanges} cambio{pendingChanges !== 1 ? 's' : ''} pendiente{pendingChanges !== 1 ? 's' : ''} de sincronizar
+              </>
+            ) : (
+              <>
+                En linea
+                {lastSyncAt && (
+                  <span className="text-emerald-500/70 ml-1">
+                    (sync: {new Date(lastSyncAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </>
+            )}
+            {isSyncing ? (
+              <span className="animate-pulse ml-1">- sincronizando...</span>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); triggerSync() }}
+                className="underline hover:text-amber-800 ml-1"
+              >
+                sincronizar ahora
+              </button>
+            )}
+          </>
         ) : (
           'Sin conexion - trabajando offline'
         )}
