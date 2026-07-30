@@ -23,8 +23,13 @@ function POSContent() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { profile } = useAuthStore()
   const { settings } = useBusinessStore()
+
+  const [selectedMenu, setSelectedMenu] = useState('auto')
+  const [isSyncing, setIsSyncing] = useState(false)
+  const isElectron = typeof window !== 'undefined' && window.electronAPI?.window
+
   const { categories, products, menus, refetch } = usePOSData(selectedMenu)
-  
+
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   
@@ -54,9 +59,6 @@ function POSContent() {
   const [orderType, setOrderTypeState] = useState(cart?.order_type || 'dine_in')
   const [takeawayInfo, setTakeawayInfo] = useState({ name: '', note: '' })
   const [zoom, setZoom] = useState(1)
-  const [selectedMenu, setSelectedMenu] = useState('auto')
-  const [isSyncing, setIsSyncing] = useState(false)
-  const isElectron = typeof window !== 'undefined' && window.electronAPI?.window
 
   // Sincronizar tipo de orden y mesa desde el carrito
   useEffect(() => {
