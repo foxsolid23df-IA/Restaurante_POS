@@ -192,13 +192,11 @@ const TABLES_WITH_UPDATED_AT = new Set([
   'branches',
   'menus',
   'profiles',
-  'products',
   'printers',
   'tables',
   'areas',
   'customers',
   'reservations',
-  'loyalty_transactions',
   'delivery_orders',
   'inventory_items',
   'business_settings'
@@ -247,14 +245,28 @@ async function pullRemoteChanges(db, lastSyncTime, forceFull = false) {
           continue
         }
 
+        // Detect local NOT NULL columns without defaults that are missing from remote data.
+        // These need fallback values so INSERT OR REPLACE doesn't fail.
+        const pragma = db.pragma(`table_info(${tableName})`)
+        const requiredMissing = pragma
+          .filter((col) => col.notnull === 1 && !col.dflt_value && !columns.includes(col.name))
+          .map((col) => col.name)
+        const insertColumns = [...columns, ...requiredMissing]
+
         // Serialize values for SQLite (convert arrays/objects to JSON strings)
         const upsertStmt = db.prepare(
-          `INSERT OR REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`
+          `INSERT OR REPLACE INTO ${tableName} (${insertColumns.join(', ')}) VALUES (${insertColumns.map(() => '?').join(', ')})`
         )
 
         const upsertMany = db.transaction((records) => {
           for (const record of records) {
-            const values = columns.map((col) => serializeValue(record[col]))
+            const values = insertColumns.map((col) => {
+              if (record[col] !== undefined && record[col] !== null) return serializeValue(record[col])
+              // Fallback for required local columns missing from remote data
+              if (col === 'updated_at') return record.created_at || new Date().toISOString()
+              if (col === 'created_at') return new Date().toISOString()
+              return null
+            })
             upsertStmt.run(...values)
           }
         })
