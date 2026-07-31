@@ -240,7 +240,7 @@ class LocalDb {
     const params = []
 
     if (branchId) {
-      sql += ' AND p.branch_id = ?'
+      sql += ' AND (p.branch_id = ? OR p.branch_id IS NULL)'
       params.push(branchId)
     }
 

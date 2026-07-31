@@ -67,7 +67,7 @@ export const posApi = {
             .eq('is_active', true)
 
         if (branchId) {
-            query = query.eq('branch_id', branchId)
+            query = query.or(`branch_id.is.null,branch_id.eq.${branchId}`)
         }
 
         if (menuId && menuId !== 'auto') {
@@ -85,7 +85,7 @@ export const posApi = {
                 .eq('is_active', true)
 
             if (branchId) {
-                fallbackQuery = fallbackQuery.eq('branch_id', branchId)
+                fallbackQuery = fallbackQuery.or(`branch_id.is.null,branch_id.eq.${branchId}`)
             }
 
             if (menuId && menuId !== 'auto') {

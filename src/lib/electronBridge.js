@@ -197,6 +197,12 @@ export const sync = {
       return window.electronAPI.sync.now()
     }
     return { success: false, error: 'Sync only available in Electron' }
+  },
+  forceFull: async () => {
+    if (isElectron) {
+      return window.electronAPI.sync.forceFull()
+    }
+    return { success: false, error: 'Force sync only available in Electron' }
   }
 }
 

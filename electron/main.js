@@ -4,7 +4,7 @@ import { existsSync, writeFileSync, readFileSync, appendFileSync, mkdirSync } fr
 import { initDatabase } from './database/connection.js'
 import { setupPrinterHandlers } from './printer/printerService.js'
 import { setupUpdater } from './updater.js'
-import { manualSync, startAutoSync } from './database/sync.js'
+import { manualSync, startAutoSync, forceFullSync, initializeSyncConfig } from './database/sync.js'
 import { isActivated, needsRevalidation, isGraceExpired, isInGracePeriod, activateLicense, revalidateLicense, getLicenseInfo, getLicense } from './license/licenseManager.js'
 
 let mainWindow = null
@@ -123,6 +123,13 @@ function setupSyncHandlers() {
       return { success: false, error: 'Database not initialized' }
     }
     return manualSync(db)
+  })
+
+  ipcMain.handle('sync:forceFull', async () => {
+    if (!db) {
+      return { success: false, error: 'Database not initialized' }
+    }
+    return forceFullSync(db)
   })
 }
 
@@ -484,6 +491,7 @@ app.whenReady().then(async () => {
   console.log('Initializing database...')
   try {
     db = initDatabase()
+    initializeSyncConfig(db)
     console.log('Database initialized successfully')
   } catch (error) {
     console.error('Database initialization error:', error)

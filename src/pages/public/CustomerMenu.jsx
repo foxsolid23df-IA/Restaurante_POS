@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { ShoppingCart, Plus, Minus, X, Send, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
-function usePublicMenu() {
+function usePublicMenu(tableId) {
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,12 +27,13 @@ function usePublicMenu() {
   }, [])
 
   useEffect(() => {
+    if (!tableId) return
     async function loadTable() {
       const { data } = await supabase.from('tables').select('name').eq('id', tableId).single()
       if (data) setTableName(data.name)
     }
     loadTable()
-  }, [])
+  }, [tableId])
 
   return { products, categories, loading, tableName }
 }
@@ -99,7 +100,7 @@ function CartDrawer({ cart, onUpdateQuantity, onRemove, onSubmit }) {
 
 export default function CustomerMenu() {
   const { tableId } = useParams()
-  const { products, categories, loading, tableName } = usePublicMenu()
+  const { products, categories, loading, tableName } = usePublicMenu(tableId)
   const [cart, setCart] = useState([])
   const [activeCategory, setActiveCategory] = useState('all')
   const [submitting, setSubmitting] = useState(false)

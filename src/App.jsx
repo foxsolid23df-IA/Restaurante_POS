@@ -245,12 +245,8 @@ function App() {
                 <Route path="/pos/*" element={<Navigate to="/admin" replace />} />
               )}
 
-              {/* Public customer menu — also restricted to desktop app */}
-              {isElectron ? (
-                <Route path="/menu/:tableId" element={<CustomerMenu />} />
-              ) : (
-                <Route path="/menu/:tableId" element={<DesktopOnly />} />
-              )}
+              {/* Public customer menu — available on web and desktop */}
+              <Route path="/menu/:tableId" element={<CustomerMenu />} />
 
               {/* Global Redirects */}
               <Route path="/" element={<Navigate to={isElectron ? '/pos' : '/admin'} replace />} />

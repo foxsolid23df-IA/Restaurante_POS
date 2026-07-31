@@ -50,7 +50,8 @@ const loggerAPI = {
 
 // Sync API
 const syncAPI = {
-  now: () => ipcRenderer.invoke('sync:now')
+  now: () => ipcRenderer.invoke('sync:now'),
+  forceFull: () => ipcRenderer.invoke('sync:forceFull')
 }
 
 // License API

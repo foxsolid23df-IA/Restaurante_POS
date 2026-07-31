@@ -55,3 +55,19 @@ CREATE POLICY anon_staff_config_all
   TO anon
   USING (true)
   WITH CHECK (true);
+
+-- Products: allow anon to read for public QR menu
+DROP POLICY IF EXISTS anon_products_select ON public.products;
+CREATE POLICY anon_products_select
+  ON public.products
+  FOR SELECT
+  TO anon
+  USING (true);
+
+-- Tables: allow anon to read for public QR menu
+DROP POLICY IF EXISTS anon_tables_select ON public.tables;
+CREATE POLICY anon_tables_select
+  ON public.tables
+  FOR SELECT
+  TO anon
+  USING (true);

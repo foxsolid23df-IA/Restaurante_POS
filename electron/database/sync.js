@@ -138,65 +138,155 @@ async function downloadProductImages(db) {
   }
 }
 
-// Pull remote changes (from Supabase to local SQLite)
-async function pullRemoteChanges(db, lastSyncTime) {
+// Serialize values for SQLite binding (JSONB fields, dates, booleans, etc.)
+function serializeValue(value) {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'boolean') return value ? 1 : 0
+  if (Array.isArray(value)) return JSON.stringify(value)
+  if (typeof value === 'object' && value.constructor === Object) return JSON.stringify(value)
+  if (value instanceof Date) return value.toISOString()
+  return value
+}
+
+// Ensure sync_config table exists
+function ensureSyncConfig(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sync_config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `)
+}
+
+// Get the column names that exist in both the Supabase data AND the local SQLite table
+function getLocalColumns(db, tableName, remoteKeys) {
   try {
+    const pragma = db.pragma(`table_info(${tableName})`)
+    const localCols = new Set(pragma.map((col) => col.name))
+    return remoteKeys.filter((key) => localCols.has(key))
+  } catch {
+    return remoteKeys
+  }
+}
+
+// Tables that should be synced from remote
+const TABLES_TO_SYNC = [
+  'branches',
+  'menus',
+  'profiles',
+  'categories',
+  'products',
+  'printers',
+  'tables',
+  'areas',
+  'orders',
+  'order_items',
+  'customers',
+  'reservations',
+  'loyalty_transactions'
+]
+
+// Tables that have an updated_at column for incremental sync
+const TABLES_WITH_UPDATED_AT = new Set([
+  'branches',
+  'menus',
+  'profiles',
+  'products',
+  'printers',
+  'tables',
+  'areas',
+  'customers',
+  'reservations',
+  'loyalty_transactions',
+  'delivery_orders',
+  'inventory_items',
+  'business_settings'
+])
+
+// Pull remote changes (from Supabase to local SQLite)
+async function pullRemoteChanges(db, lastSyncTime, forceFull = false) {
+  const failedTables = []
+
+  try {
+    // Ensure sync_config table exists
+    ensureSyncConfig(db)
+
     const client = getSupabaseClient()
 
-    // Tables to sync from remote
-    const tablesToSync = [
-      'orders',
-      'order_items',
-      'tables',
-      'areas',
-      'customers',
-      'reservations',
-      'loyalty_transactions',
-      'products',
-      'categories',
-      'menus'
-    ]
+    // Disable FK constraints during pull (same pattern as seed handler)
+    // INSERT OR REPLACE does DELETE+INSERT which can fail with FK chains
+    db.exec('PRAGMA foreign_keys = OFF')
+    try {
 
-    for (const tableName of tablesToSync) {
+    for (const tableName of TABLES_TO_SYNC) {
       try {
         let query = client.from(tableName).select('*')
 
-        // If we have a last sync time, only get changes since then
-        if (lastSyncTime) {
+        // Only use updated_at filter for tables that have it AND we have a previous sync time
+        if (!forceFull && lastSyncTime && TABLES_WITH_UPDATED_AT.has(tableName)) {
           query = query.gt('updated_at', lastSyncTime)
         }
 
         const { data, error } = await query
 
         if (error) {
-          console.error(`Error pulling ${tableName}:`, error)
+          console.error(`Error pulling ${tableName}:`, error.message)
+          failedTables.push(tableName)
           continue
         }
 
-        if (data && data.length > 0) {
-          // Upsert data into local SQLite
-          const upsertStmt = db.prepare(
-            `INSERT OR REPLACE INTO ${tableName} (${Object.keys(data[0]).join(', ')}) VALUES (${Object.keys(data[0]).map(() => '?').join(', ')})`
-          )
+        if (!data || data.length === 0) continue
 
-          const upsertMany = db.transaction((records) => {
-            for (const record of records) {
-              upsertStmt.run(...Object.values(record))
-            }
-          })
+        // Get column names that exist in both remote data and local schema
+        const columns = getLocalColumns(db, tableName, Object.keys(data[0]))
 
-          upsertMany(data)
-          console.log(`Pulled ${data.length} records from ${tableName}`)
+        if (columns.length === 0) {
+          console.warn(`No matching columns for table ${tableName}, skipping`)
+          failedTables.push(tableName)
+          continue
         }
+
+        // Serialize values for SQLite (convert arrays/objects to JSON strings)
+        const upsertStmt = db.prepare(
+          `INSERT OR REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`
+        )
+
+        const upsertMany = db.transaction((records) => {
+          for (const record of records) {
+            const values = columns.map((col) => serializeValue(record[col]))
+            upsertStmt.run(...values)
+          }
+        })
+
+        upsertMany(data)
+        console.log(`Pulled ${data.length} records from ${tableName}`)
       } catch (error) {
-        console.error(`Error syncing table ${tableName}:`, error)
+        console.error(`Error syncing table ${tableName}:`, error.message)
+        failedTables.push(tableName)
       }
     }
 
-    // Update last sync time
-    db.prepare(
-      'INSERT OR REPLACE INTO sync_config (key, value) VALUES (?, ?)'
-    ).run('last_sync_time', new Date().toISOString())
+    // Only update last_sync_time if ALL tables succeeded
+    if (failedTables.length === 0) {
+      db.prepare(
+        'INSERT OR REPLACE INTO sync_config (key, value) VALUES (?, ?)'
+      ).run('last_sync_time', new Date().toISOString())
+      console.log('All tables synced successfully')
+    } else {
+      console.warn(`Sync completed with errors. Failed tables: ${failedTables.join(', ')}`)
+      // Store failed tables info for debugging
+      db.prepare(
+        'INSERT OR REPLACE INTO sync_config (key, value) VALUES (?, ?)'
+      ).run('last_sync_failed_tables', failedTables.join(','))
+      db.prepare(
+        'INSERT OR REPLACE INTO sync_config (key, value) VALUES (?, ?)'
+      ).run('last_sync_failed_at', new Date().toISOString())
+    }
+    } finally {
+      // Re-enable FK constraints
+      db.exec('PRAGMA foreign_keys = ON')
+    }
   } catch (error) {
     console.error('Error pulling remote changes:', error)
   }
@@ -245,7 +335,7 @@ export function stopAutoSync() {
   }
 }
 
-// Manual sync trigger
+// Manual sync trigger (incremental)
 export async function manualSync(db) {
   if (!net.isOnline()) {
     return { success: false, error: 'No internet connection' }
@@ -257,6 +347,26 @@ export async function manualSync(db) {
     await downloadProductImages(db)
     return { success: true }
   } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+// Force full sync - ignores last_sync_time and pulls everything from Supabase
+export async function forceFullSync(db) {
+  if (!net.isOnline()) {
+    return { success: false, error: 'No internet connection' }
+  }
+
+  try {
+    console.log('Starting forced full sync...')
+    await processSyncQueue(db)
+    // Pass forceFull=true to ignore updated_at filters
+    await pullRemoteChanges(db, null, true)
+    await downloadProductImages(db)
+    console.log('Forced full sync completed')
+    return { success: true }
+  } catch (error) {
+    console.error('Error during forced full sync:', error)
     return { success: false, error: error.message }
   }
 }
