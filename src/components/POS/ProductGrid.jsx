@@ -22,7 +22,7 @@ export default function ProductGrid({ products, onAddToCart }) {
           <button
             key={product.id}
             onClick={() => onAddToCart(product)}
-            className="premium-card dark:bg-slate-800 dark:border-slate-700 p-4 group flex flex-col h-full bg-white opacity-0 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards"
+            className="premium-card dark:bg-slate-800 dark:border-slate-700 p-4 group flex flex-col h-full bg-white"
           >
             <div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-2xl mb-5 overflow-hidden flex items-center justify-center relative shadow-inner group-hover:shadow-none transition-all">
               {product.image_url || product.local_image_path ? (
